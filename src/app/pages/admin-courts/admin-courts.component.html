@@ -1,0 +1,131 @@
+<div
+  class="min-h-screen bg-[radial-gradient(circle_at_top,_#ef4444_0%,_#b91c1c_45%,_#7f1d1d_100%)] text-white"
+>
+  <nav class="border-b border-white/20 bg-black/20 backdrop-blur">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+      <div>
+        <p class="text-sm uppercase tracking-[0.2em] text-red-100">CSI Tenis</p>
+        <h1 class="text-2xl font-bold">Gestion de Canchas</h1>
+      </div>
+      <button
+        (click)="goToDashboard()"
+        class="rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10"
+      >
+        Volver al panel
+      </button>
+    </div>
+  </nav>
+
+  <main class="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-5">
+    <section class="rounded-xl border border-white/20 bg-white/10 p-6 lg:col-span-2">
+      <h2 class="mb-4 text-xl font-semibold">
+        {{ editingCourtId ? 'Editar cancha' : 'Nueva cancha' }}
+      </h2>
+
+      <form [formGroup]="courtForm" (ngSubmit)="submitCourtForm()" class="space-y-4">
+        <div>
+          <label class="mb-2 block text-sm font-medium">Nombre</label>
+          <input
+            formControlName="name"
+            type="text"
+            placeholder="Cancha 1"
+            class="w-full rounded-lg border border-white/30 bg-white/95 px-4 py-2 text-gray-900 outline-none focus:border-red-300"
+          />
+          <p
+            *ngIf="courtForm.get('name')?.invalid && courtForm.get('name')?.touched"
+            class="mt-1 text-xs text-red-100"
+          >
+            Ingresa un nombre valido (minimo 3 caracteres).
+          </p>
+        </div>
+
+        <label class="flex items-center gap-2 text-sm">
+          <input formControlName="is_active" type="checkbox" class="h-4 w-4" />
+          Cancha activa
+        </label>
+
+        <div class="flex gap-2">
+          <button
+            type="submit"
+            [disabled]="isSaving"
+            class="rounded-lg bg-white px-4 py-2 font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+          >
+            {{ isSaving ? 'Guardando...' : editingCourtId ? 'Guardar cambios' : 'Crear cancha' }}
+          </button>
+
+          <button
+            *ngIf="editingCourtId"
+            type="button"
+            (click)="cancelEdit()"
+            class="rounded-lg border border-white/30 px-4 py-2 hover:bg-white/10"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+
+      <p
+        *ngIf="errorMessage"
+        class="mt-4 rounded-lg border border-red-300/60 bg-red-900/40 px-3 py-2 text-sm"
+      >
+        {{ errorMessage }}
+      </p>
+      <p
+        *ngIf="successMessage"
+        class="mt-4 rounded-lg border border-emerald-300/60 bg-emerald-900/40 px-3 py-2 text-sm"
+      >
+        {{ successMessage }}
+      </p>
+    </section>
+
+    <section class="rounded-xl border border-white/20 bg-white/10 p-6 lg:col-span-3">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-xl font-semibold">Canchas registradas</h2>
+        <button
+          (click)="loadCourts()"
+          class="rounded-lg border border-white/30 px-3 py-1 text-sm hover:bg-white/10"
+        >
+          Actualizar
+        </button>
+      </div>
+
+      <p *ngIf="isLoading" class="text-sm text-red-100">Cargando canchas...</p>
+
+      <div
+        *ngIf="!isLoading && courts.length === 0"
+        class="rounded-lg border border-white/20 p-4 text-sm"
+      >
+        Todavia no hay canchas cargadas.
+      </div>
+
+      <div *ngIf="!isLoading && courts.length > 0" class="space-y-3">
+        <article
+          *ngFor="let court of courts"
+          class="flex items-center justify-between rounded-lg border border-white/20 bg-black/10 p-4"
+        >
+          <div>
+            <p class="font-semibold">{{ court.name }}</p>
+            <p class="text-xs text-red-100">
+              Estado: {{ court.is_active === false ? 'Inactiva' : 'Activa' }}
+            </p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              (click)="editCourt(court)"
+              class="rounded-md border border-white/30 px-3 py-1 text-sm hover:bg-white/10"
+            >
+              Editar
+            </button>
+            <button
+              (click)="deleteCourt(court)"
+              class="rounded-md bg-red-900/50 px-3 py-1 text-sm hover:bg-red-900/70"
+            >
+              Eliminar
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+</div>

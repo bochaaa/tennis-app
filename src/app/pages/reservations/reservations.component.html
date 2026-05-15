@@ -1,0 +1,458 @@
+<div
+  class="min-h-screen bg-[radial-gradient(circle_at_top,_#ef4444_0%,_#b91c1c_45%,_#7f1d1d_100%)] py-8 px-4 text-white"
+>
+  <div class="mx-auto max-w-7xl">
+    <div class="mb-6 rounded-lg bg-white p-6 text-gray-900 shadow-lg">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+          <button (click)="goHome()" class="text-2xl hover:opacity-70">&larr;</button>
+          <h1 class="text-3xl font-bold text-red-700">Reserva tu Cancha</h1>
+        </div>
+      </div>
+    </div>
+
+    <div class="mb-8">
+      <div class="flex items-center justify-between gap-2">
+        <div
+          [class]="
+            'flex-1 border-b-4 pb-2 text-center transition ' +
+            (currentStep === 'date-court' ? 'border-white' : 'border-white/35')
+          "
+        >
+          <span class="font-bold" [class.text-white]="currentStep === 'date-court'"
+            >1. Fecha y Grilla</span
+          >
+        </div>
+        <div class="px-2">--></div>
+        <div
+          [class]="
+            'flex-1 border-b-4 pb-2 text-center transition ' +
+            (currentStep === 'players' ? 'border-white' : 'border-white/35')
+          "
+        >
+          <span class="font-bold" [class.text-white]="currentStep === 'players'">2. Jugadores</span>
+        </div>
+        <div class="px-2">--></div>
+        <div
+          [class]="
+            'flex-1 border-b-4 pb-2 text-center transition ' +
+            (currentStep === 'review' ? 'border-white' : 'border-white/35')
+          "
+        >
+          <span class="font-bold" [class.text-white]="currentStep === 'review'">3. Confirmar</span>
+        </div>
+        <div class="px-2">--></div>
+        <div
+          [class]="
+            'flex-1 border-b-4 pb-2 text-center transition ' +
+            (currentStep === 'payment' ? 'border-white' : 'border-white/35')
+          "
+        >
+          <span class="font-bold" [class.text-white]="currentStep === 'payment'">4. Pago</span>
+        </div>
+      </div>
+    </div>
+
+    <form [formGroup]="reservationForm" class="rounded-lg bg-white p-8 text-gray-900 shadow-lg">
+      <div
+        *ngIf="errorMessage"
+        class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700"
+      >
+        {{ errorMessage }}
+      </div>
+
+      <div
+        *ngIf="successMessage"
+        class="mb-6 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-green-700"
+      >
+        {{ successMessage }}
+      </div>
+
+      <div *ngIf="currentStep === 'date-court'" class="space-y-6">
+        <h2 class="mb-2 text-2xl font-bold">Selecciona Fecha y Horario</h2>
+
+        <div>
+          <label class="mb-2 block text-sm font-medium text-gray-700">Fecha</label>
+          <input
+            type="date"
+            formControlName="date"
+            class="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-red-400"
+          />
+        </div>
+
+        <div class="rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <div class="mb-4 flex flex-wrap items-center gap-4 text-xs font-semibold">
+            <span class="inline-flex items-center gap-2"
+              ><span class="h-3 w-3 rounded border border-emerald-300 bg-emerald-100"></span>
+              Libre</span
+            >
+            <span class="inline-flex items-center gap-2"
+              ><span class="h-3 w-3 rounded border border-blue-300 bg-blue-100"></span> Ocupado /
+              Clase</span
+            >
+            <span class="inline-flex items-center gap-2"
+              ><span class="h-3 w-3 rounded border border-gray-300 bg-gray-100"></span>
+              Cerrado</span
+            >
+            <span class="inline-flex items-center gap-2"
+              ><span class="h-3 w-3 rounded border border-red-700 bg-red-700"></span>
+              Seleccionado</span
+            >
+          </div>
+
+          <p class="mb-4 text-xs text-gray-600">
+            Rango del dia: {{ dayStartLabel }} - {{ dayEndLabel }}
+          </p>
+
+          <div
+            *ngIf="isLoadingAvailability"
+            class="rounded border border-gray-200 bg-white p-4 text-sm text-gray-600"
+          >
+            Cargando grilla de disponibilidad...
+          </div>
+
+          <div
+            *ngIf="!isLoadingAvailability && availabilityCourts.length === 0"
+            class="rounded border border-gray-200 bg-white p-4 text-sm text-gray-600"
+          >
+            Selecciona una fecha para ver la grilla de canchas.
+          </div>
+
+          <div
+            *ngIf="!isLoadingAvailability && availabilityCourts.length > 0"
+            class="overflow-x-auto rounded-lg border border-gray-200 bg-white"
+          >
+            <table class="min-w-full border-collapse text-xs">
+              <thead>
+                <tr class="bg-gray-900 text-white">
+                  <th class="border border-gray-700 px-2 py-2 text-left">Hora</th>
+                  <th
+                    *ngFor="let court of availabilityCourts"
+                    class="border border-gray-700 px-3 py-2 text-center"
+                  >
+                    {{ court.name }}
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let slot of timeSlots" class="odd:bg-gray-50 even:bg-white">
+                  <td class="border border-gray-200 px-2 py-1 font-semibold text-gray-700">
+                    {{ slot }}
+                  </td>
+                  <td
+                    *ngFor="let court of availabilityCourts"
+                    class="border border-gray-200 p-1 align-middle"
+                  >
+                    <button
+                      type="button"
+                      (click)="selectSlot(court, slot)"
+                      [disabled]="!isSlotSelectable(court.id, slot)"
+                      class="h-10 w-full rounded border text-[11px] font-semibold transition"
+                      [ngClass]="getSlotClasses(court.id, slot)"
+                    >
+                      {{ getSlotLabel(court.id, slot) }}
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div
+            *ngIf="selectedCourt && selectedTime"
+            class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          >
+            Seleccion actual: <strong>{{ selectedCourt.name }}</strong> a las
+            <strong>{{ selectedTime }}</strong
+            >.
+          </div>
+        </div>
+
+        <div>
+          <label class="mb-3 block text-sm font-medium text-gray-700">Tipo de juego</label>
+          <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <button
+              type="button"
+              (click)="reservationForm.patchValue({ game_mode: 'SINGLES' }); onGameModeChange()"
+              [class]="
+                'rounded-lg border-2 p-4 font-bold transition ' +
+                (reservationForm.get('game_mode')?.value === 'SINGLES'
+                  ? 'border-red-600 bg-red-50 text-red-700'
+                  : 'border-gray-300 hover:border-red-300')
+              "
+            >
+              Singles (2 jugadores)
+            </button>
+            <button
+              type="button"
+              (click)="reservationForm.patchValue({ game_mode: 'DOUBLES' }); onGameModeChange()"
+              [class]="
+                'rounded-lg border-2 p-4 font-bold transition ' +
+                (reservationForm.get('game_mode')?.value === 'DOUBLES'
+                  ? 'border-red-600 bg-red-50 text-red-700'
+                  : 'border-gray-300 hover:border-red-300')
+              "
+            >
+              Dobles (4 jugadores)
+            </button>
+          </div>
+        </div>
+
+        <div class="border-t pt-6">
+          <h3 class="mb-4 text-lg font-bold text-gray-800">Datos de contacto</h3>
+          <div class="space-y-4">
+            <div>
+              <label class="mb-2 block text-sm font-medium text-gray-700">Nombre</label>
+              <input
+                type="text"
+                formControlName="contact_name"
+                class="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-red-400"
+                placeholder="Tu nombre completo"
+              />
+              <p
+                *ngIf="
+                  reservationForm.get('contact_name')?.invalid &&
+                  reservationForm.get('contact_name')?.touched
+                "
+                class="mt-1 text-xs text-red-600"
+              >
+                Ingresa un nombre valido (minimo 3 caracteres).
+              </p>
+            </div>
+            <div>
+              <label class="mb-2 block text-sm font-medium text-gray-700">Telefono</label>
+              <input
+                type="tel"
+                formControlName="contact_phone"
+                class="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-red-400"
+                placeholder="2302123456"
+              />
+              <p
+                *ngIf="
+                  reservationForm.get('contact_phone')?.invalid &&
+                  reservationForm.get('contact_phone')?.touched
+                "
+                class="mt-1 text-xs text-red-600"
+              >
+                Ingresa un telefono valido (solo numeros, minimo 10 digitos).
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div *ngIf="currentStep === 'players'" class="space-y-6">
+        <h2 class="mb-6 text-2xl font-bold text-gray-800">Datos de los jugadores</h2>
+
+        <div formArrayName="players" class="space-y-6">
+          <div
+            *ngFor="let player of playersArray.controls; let i = index"
+            class="border-l-4 border-red-500 pl-4"
+          >
+            <h3 class="mb-4 font-bold text-gray-800">Jugador {{ i + 1 }}</h3>
+            <div [formGroupName]="i" class="space-y-4">
+              <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div>
+                  <label class="mb-2 block text-sm font-medium text-gray-700">Nombre</label>
+                  <input
+                    type="text"
+                    formControlName="first_name"
+                    class="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-red-400"
+                    placeholder="Nombre"
+                  />
+                </div>
+                <div>
+                  <label class="mb-2 block text-sm font-medium text-gray-700">Apellido</label>
+                  <input
+                    type="text"
+                    formControlName="last_name"
+                    class="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-red-400"
+                    placeholder="Apellido"
+                  />
+                </div>
+              </div>
+              <label class="flex items-center text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  [id]="'member_' + i"
+                  formControlName="is_member"
+                  class="h-4 w-4"
+                />
+                <span class="ml-2">Es socio del club</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t pt-6">
+          <label class="mb-2 block text-sm font-medium text-gray-700">Notas (opcional)</label>
+          <textarea
+            formControlName="notes"
+            rows="3"
+            class="w-full rounded-lg border border-gray-300 px-4 py-2 outline-none focus:border-red-400"
+            placeholder="Agrega una nota para la reserva..."
+          ></textarea>
+        </div>
+      </div>
+
+      <div *ngIf="currentStep === 'review'" class="space-y-6">
+        <h2 class="mb-6 text-2xl font-bold text-gray-800">Revisa tu reserva</h2>
+
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div class="rounded-lg bg-gray-50 p-4">
+            <p class="text-xs text-gray-600">Cancha</p>
+            <p class="font-bold text-gray-800">{{ selectedCourt?.name }}</p>
+          </div>
+          <div class="rounded-lg bg-gray-50 p-4">
+            <p class="text-xs text-gray-600">Fecha</p>
+            <p class="font-bold text-gray-800">{{ reservationForm.get('date')?.value }}</p>
+          </div>
+          <div class="rounded-lg bg-gray-50 p-4">
+            <p class="text-xs text-gray-600">Hora</p>
+            <p class="font-bold text-gray-800">{{ reservationForm.get('start_time')?.value }}</p>
+          </div>
+          <div class="rounded-lg bg-gray-50 p-4">
+            <p class="text-xs text-gray-600">Tipo de juego</p>
+            <p class="font-bold text-gray-800">{{ reservationForm.get('game_mode')?.value }}</p>
+          </div>
+        </div>
+
+        <div class="border-t pt-6">
+          <h3 class="mb-4 font-bold text-gray-800">Jugadores</h3>
+          <div class="space-y-2">
+            <div
+              *ngFor="let player of playersArray.value"
+              class="flex items-center justify-between rounded bg-gray-50 p-3"
+            >
+              <div>
+                <p>{{ player.first_name }} {{ player.last_name }}</p>
+                <p class="text-xs text-gray-600">
+                  {{ player.is_member ? 'Miembro' : 'No miembro' }}
+                </p>
+              </div>
+              <div class="text-right">
+                <p class="text-xs text-gray-500">Precio jugador</p>
+                <p class="text-sm font-semibold text-gray-800">
+                  {{ formatCurrency(getPlayerEstimatedPrice(player)) }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="border-t pt-6">
+          <h3 class="mb-2 font-bold text-gray-800">Resumen de precios</h3>
+          <div class="rounded-lg bg-amber-50 p-4">
+            <div class="flex items-center justify-between">
+              <span class="text-sm text-gray-700">Total estimado</span>
+              <span class="text-lg font-bold text-amber-900">
+                {{ formatCurrency(getEstimatedTotalPrice()) }}
+              </span>
+            </div>
+            <p *ngIf="getEstimatedTotalPrice() === null" class="mt-2 text-xs text-amber-700">
+              Falta configurar precios para este tipo de juego o tipo de jugador.
+            </p>
+            <p *ngIf="getEstimatedTotalPrice() !== null" class="mt-2 text-xs text-gray-600">
+              El backend confirma el monto final al crear la reserva.
+            </p>
+          </div>
+        </div>
+
+        <div *ngIf="reservationForm.get('notes')?.value" class="border-t pt-6">
+          <h3 class="mb-2 font-bold text-gray-800">Notas</h3>
+          <p class="text-gray-700">{{ reservationForm.get('notes')?.value }}</p>
+        </div>
+      </div>
+
+      <div *ngIf="currentStep === 'payment'" class="space-y-6">
+        <div class="rounded-lg border border-emerald-300 bg-emerald-50 p-4 text-emerald-900">
+          <h2 class="text-2xl font-bold">Reserva confirmada</h2>
+          <p class="mt-1 text-sm">
+            Tu reserva ya fue creada con ID
+            <strong>#{{ confirmedReservationId }}</strong
+            >.
+          </p>
+        </div>
+
+        <div class="rounded-lg border border-gray-200 bg-gray-50 p-5">
+          <h3 class="text-lg font-bold text-gray-800">Paso 4: Realizar pago</h3>
+          <p class="mt-2 text-sm text-gray-700">
+            Monto a pagar:
+            <strong>{{ formatCurrency(getPaymentAmount()) }}</strong>
+          </p>
+
+          <div class="mt-4 rounded-lg border border-dashed border-gray-300 bg-white p-6 text-center">
+            <p class="text-sm text-gray-700">QR de pago (Mercado Pago)</p>
+            <p class="mt-2 text-xs text-gray-500">
+              Aqui va el QR predeterminado cuando lo compartan.
+            </p>
+          </div>
+
+          <a
+            [href]="mpPaymentLink"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mt-4 inline-flex rounded-lg bg-sky-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-sky-700"
+          >
+            Abrir link de pago MP
+          </a>
+        </div>
+
+        <div class="rounded-lg border border-gray-200 bg-white p-5">
+          <h3 class="text-lg font-bold text-gray-800">Enviar comprobante</h3>
+          <p class="mt-2 text-sm text-gray-700">
+            Cuando pagues, envia el comprobante a Damian por WhatsApp.
+          </p>
+          <a
+            [href]="getWhatsappPaymentLink()"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="mt-4 inline-flex rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700"
+          >
+            Enviar comprobante por WhatsApp
+          </a>
+        </div>
+      </div>
+
+      <div class="mt-8 flex gap-4 border-t pt-6">
+        <button
+          type="button"
+          *ngIf="currentStep !== 'date-court' && currentStep !== 'payment'"
+          (click)="previousStep()"
+          class="flex-1 rounded-lg border-2 border-gray-300 px-6 py-3 font-bold text-gray-700 transition hover:border-gray-400"
+        >
+          Anterior
+        </button>
+
+        <button
+          type="button"
+          *ngIf="currentStep !== 'review'"
+          (click)="nextStep()"
+          class="flex-1 rounded-lg bg-red-700 px-6 py-3 font-bold text-white transition hover:bg-red-800"
+        >
+          Siguiente
+        </button>
+
+        <button
+          type="button"
+          *ngIf="currentStep === 'review'"
+          [disabled]="isLoading || getEstimatedTotalPrice() === null"
+          (click)="onSubmit()"
+          class="flex-1 rounded-lg bg-emerald-600 px-6 py-3 font-bold text-white transition hover:bg-emerald-700 disabled:bg-gray-400"
+        >
+          <span *ngIf="!isLoading">Confirmar reserva</span>
+          <span *ngIf="isLoading">Cargando...</span>
+        </button>
+
+        <button
+          type="button"
+          *ngIf="currentStep === 'payment'"
+          (click)="goHome()"
+          class="flex-1 rounded-lg bg-red-700 px-6 py-3 font-bold text-white transition hover:bg-red-800"
+        >
+          Volver al inicio
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
