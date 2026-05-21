@@ -3,6 +3,7 @@ import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { catchError, map, tap } from 'rxjs/operators';
 import { LoginRequest, LoginResponse } from '../models';
+import { environment } from '../../environments/environment';
 
 interface RefreshResponse {
   access: string;
@@ -20,7 +21,7 @@ interface AuthMeResponse {
   providedIn: 'root',
 })
 export class AuthService {
-  private apiUrl = 'http://127.0.0.1:8000/api';
+  private apiUrl = environment.apiUrl;
   private isAdmin$ = new BehaviorSubject<boolean>(false);
   private currentAdmin$ = new BehaviorSubject<string | null>(null);
   private rawHttp: HttpClient;

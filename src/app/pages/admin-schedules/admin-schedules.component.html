@@ -1,0 +1,146 @@
+<div
+  class="min-h-screen bg-[radial-gradient(circle_at_top,_#ef4444_0%,_#b91c1c_45%,_#7f1d1d_100%)] text-white"
+>
+  <nav class="border-b border-white/20 bg-black/20 backdrop-blur">
+    <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+      <div>
+        <p class="text-sm uppercase tracking-[0.2em] text-red-100">CSI Tenis</p>
+        <h1 class="text-2xl font-bold">Gestion de Horarios</h1>
+      </div>
+      <button
+        (click)="goToDashboard()"
+        class="rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10"
+      >
+        Volver al panel
+      </button>
+    </div>
+  </nav>
+
+  <main class="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-5">
+    <section class="rounded-xl border border-white/20 bg-white/10 p-6 lg:col-span-2">
+      <h2 class="mb-4 text-xl font-semibold">
+        {{ editingScheduleId ? 'Editar horario' : 'Nuevo horario' }}
+      </h2>
+
+      <form [formGroup]="scheduleForm" (ngSubmit)="submitScheduleForm()" class="space-y-4">
+        <div>
+          <label class="mb-2 block text-sm font-medium">Dia de la semana</label>
+          <select
+            formControlName="day_of_week"
+            class="w-full rounded-lg border border-white/30 bg-white/95 px-4 py-2 text-gray-900 outline-none focus:border-red-300"
+          >
+            <option *ngFor="let day of daysOfWeek" [value]="day">
+              {{ getDayLabel(day) }}
+            </option>
+          </select>
+        </div>
+
+        <label class="flex items-center gap-2 text-sm">
+          <input formControlName="is_closed" type="checkbox" class="h-4 w-4" />
+          Cerrado todo el dia
+        </label>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="mb-2 block text-sm font-medium">Apertura</label>
+            <input
+              formControlName="open_time"
+              type="time"
+              class="w-full rounded-lg border border-white/30 bg-white/95 px-4 py-2 text-gray-900 outline-none focus:border-red-300"
+            />
+          </div>
+          <div>
+            <label class="mb-2 block text-sm font-medium">Cierre</label>
+            <input
+              formControlName="close_time"
+              type="time"
+              class="w-full rounded-lg border border-white/30 bg-white/95 px-4 py-2 text-gray-900 outline-none focus:border-red-300"
+            />
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button
+            type="submit"
+            [disabled]="isSaving"
+            class="rounded-lg bg-white px-4 py-2 font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+          >
+            {{
+              isSaving ? 'Guardando...' : editingScheduleId ? 'Guardar cambios' : 'Crear horario'
+            }}
+          </button>
+
+          <button
+            *ngIf="editingScheduleId"
+            type="button"
+            (click)="cancelEdit()"
+            class="rounded-lg border border-white/30 px-4 py-2 hover:bg-white/10"
+          >
+            Cancelar
+          </button>
+        </div>
+      </form>
+
+      <p
+        *ngIf="errorMessage"
+        class="mt-4 rounded-lg border border-red-300/60 bg-red-900/40 px-3 py-2 text-sm"
+      >
+        {{ errorMessage }}
+      </p>
+      <p
+        *ngIf="successMessage"
+        class="mt-4 rounded-lg border border-emerald-300/60 bg-emerald-900/40 px-3 py-2 text-sm"
+      >
+        {{ successMessage }}
+      </p>
+    </section>
+
+    <section class="rounded-xl border border-white/20 bg-white/10 p-6 lg:col-span-3">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="text-xl font-semibold">Horarios cargados</h2>
+        <button
+          (click)="loadSchedules()"
+          class="rounded-lg border border-white/30 px-3 py-1 text-sm hover:bg-white/10"
+        >
+          Actualizar
+        </button>
+      </div>
+
+      <p *ngIf="isLoading" class="text-sm text-red-100">Cargando horarios...</p>
+
+      <div
+        *ngIf="!isLoading && schedules.length === 0"
+        class="rounded-lg border border-white/20 p-4 text-sm"
+      >
+        Todavia no hay horarios cargados.
+      </div>
+
+      <div *ngIf="!isLoading && schedules.length > 0" class="space-y-3">
+        <article
+          *ngFor="let schedule of schedules"
+          class="flex items-center justify-between rounded-lg border border-white/20 bg-black/10 p-4"
+        >
+          <div>
+            <p class="font-semibold">{{ getDayLabel(schedule.day_of_week) }}</p>
+            <p class="text-sm text-red-100">{{ getScheduleLabel(schedule) }}</p>
+          </div>
+
+          <div class="flex gap-2">
+            <button
+              (click)="editSchedule(schedule)"
+              class="rounded-md border border-white/30 px-3 py-1 text-sm hover:bg-white/10"
+            >
+              Editar
+            </button>
+            <button
+              (click)="deleteSchedule(schedule)"
+              class="rounded-md bg-red-900/50 px-3 py-1 text-sm hover:bg-red-900/70"
+            >
+              Eliminar
+            </button>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+</div>

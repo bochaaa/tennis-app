@@ -54,12 +54,35 @@
 
       <div class="rounded-lg border border-white/20 bg-white/10 p-6">
         <h3 class="text-lg font-bold mb-2">Gestionar Precios</h3>
-        <p class="text-sm text-red-100">Proximo modulo.</p>
+        <p class="text-sm text-red-100 mb-4">Configura tarifas para socios y no socios.</p>
+        <button
+          (click)="goToPrices()"
+          class="w-full rounded-lg bg-white px-4 py-2 font-semibold text-red-700 hover:bg-red-50"
+        >
+          Ir a Precios
+        </button>
       </div>
 
       <div class="rounded-lg border border-white/20 bg-white/10 p-6">
         <h3 class="text-lg font-bold mb-2">Gestionar Horarios</h3>
-        <p class="text-sm text-red-100">Proximo modulo.</p>
+        <p class="text-sm text-red-100 mb-4">Define apertura y cierre por dia del club.</p>
+        <button
+          (click)="goToSchedules()"
+          class="w-full rounded-lg bg-white px-4 py-2 font-semibold text-red-700 hover:bg-red-50"
+        >
+          Ir a Horarios
+        </button>
+      </div>
+
+      <div class="rounded-lg border border-white/20 bg-white/10 p-6">
+        <h3 class="text-lg font-bold mb-2">Clases Recurrentes</h3>
+        <p class="text-sm text-red-100 mb-4">Administra reglas semanales y genera clases.</p>
+        <button
+          (click)="goToRecurringClasses()"
+          class="w-full rounded-lg bg-white px-4 py-2 font-semibold text-red-700 hover:bg-red-50"
+        >
+          Ir a Clases
+        </button>
       </div>
     </div>
   </div>

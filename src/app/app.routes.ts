@@ -34,6 +34,25 @@ export const routes: Routes = [
           import('./pages/admin-courts/admin-courts.component').then((m) => m.AdminCourtsComponent),
       },
       {
+        path: 'prices',
+        loadComponent: () =>
+          import('./pages/admin-prices/admin-prices.component').then((m) => m.AdminPricesComponent),
+      },
+      {
+        path: 'schedules',
+        loadComponent: () =>
+          import('./pages/admin-schedules/admin-schedules.component').then(
+            (m) => m.AdminSchedulesComponent,
+          ),
+      },
+      {
+        path: 'recurring-classes',
+        loadComponent: () =>
+          import('./pages/admin-recurring-classes/admin-recurring-classes.component').then(
+            (m) => m.AdminRecurringClassesComponent,
+          ),
+      },
+      {
         path: '',
         redirectTo: 'dashboard',
         pathMatch: 'full',

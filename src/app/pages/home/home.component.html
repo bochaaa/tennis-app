@@ -10,9 +10,13 @@
 
       <div class="flex items-center space-x-4">
         <ng-container *ngIf="isAdmin$ | async; else guestBadge">
-          <div class="rounded-lg border border-emerald-300/60 bg-emerald-900/40 px-3 py-2 text-right">
+          <div
+            class="rounded-lg border border-emerald-300/60 bg-emerald-900/40 px-3 py-2 text-right"
+          >
             <p class="text-[11px] uppercase tracking-wide text-emerald-100">Sesion iniciada</p>
-            <p class="text-sm font-semibold text-white">{{ (currentAdmin$ | async) || 'Administrador' }}</p>
+            <p class="text-sm font-semibold text-white">
+              {{ (currentAdmin$ | async) || 'Administrador' }}
+            </p>
           </div>
           <button
             (click)="logout()"
@@ -23,7 +27,9 @@
         </ng-container>
 
         <ng-template #guestBadge>
-          <div class="rounded-lg border border-white/25 bg-white/10 px-3 py-2 text-sm font-semibold text-red-100">
+          <div
+            class="rounded-lg border border-white/25 bg-white/10 px-3 py-2 text-sm font-semibold text-red-100"
+          >
             Modo invitado
           </div>
         </ng-template>
@@ -33,7 +39,7 @@
 
   <div class="mx-auto max-w-6xl px-4 py-16">
     <div class="mb-12 text-center">
-      <h2 class="mb-3 text-5xl font-bold">Sistema de Reservas de Canchas</h2>
+      <h2 class="mb-3 text-5xl font-bold">Reservas de Canchas</h2>
       <p class="text-lg text-red-100">Reserva turnos de tenis para el club en pocos pasos.</p>
     </div>
 
@@ -70,7 +76,7 @@
         <p class="mb-6 text-red-100">Reserva una cancha sin registrarte.</p>
         <button
           (click)="bookAsGuest()"
-          class="w-full rounded-lg bg-white px-6 py-3 font-bold text-red-700 hover:bg-red-50"
+          class="w-full rounded-lg bg-white px-6 py-3 font-bold text-red-700 border-3 hover:border-red-800 cursor-pointer"
         >
           Hacer una reserva
         </button>

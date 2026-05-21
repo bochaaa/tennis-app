@@ -33,4 +33,16 @@ export class AdminDashboardComponent {
   goToCourts(): void {
     this.router.navigate(['/admin/courts']);
   }
+
+  goToPrices(): void {
+    this.router.navigate(['/admin/prices']);
+  }
+
+  goToSchedules(): void {
+    this.router.navigate(['/admin/schedules']);
+  }
+
+  goToRecurringClasses(): void {
+    this.router.navigate(['/admin/recurring-classes']);
+  }
 }

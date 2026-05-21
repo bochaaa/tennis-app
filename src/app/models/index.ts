@@ -108,3 +108,61 @@ export interface Price {
   player_type: 'MEMBER' | 'NON_MEMBER';
   price: number;
 }
+
+export interface PriceWriteRequest {
+  game_mode: 'SINGLES' | 'DOUBLES';
+  player_type: 'MEMBER' | 'NON_MEMBER';
+  price: number;
+}
+
+export type DayOfWeek =
+  | 'MONDAY'
+  | 'TUESDAY'
+  | 'WEDNESDAY'
+  | 'THURSDAY'
+  | 'FRIDAY'
+  | 'SATURDAY'
+  | 'SUNDAY';
+
+export interface Schedule {
+  id: number;
+  day_of_week: DayOfWeek;
+  open_time?: string | null;
+  close_time?: string | null;
+  is_closed?: boolean;
+}
+
+export interface ScheduleWriteRequest {
+  day_of_week: DayOfWeek;
+  open_time?: string | null;
+  close_time?: string | null;
+  is_closed?: boolean;
+}
+
+export interface RecurringRule {
+  id: number;
+  court: number | { id: number; name?: string };
+  court_name?: string;
+  day_of_week?: DayOfWeek;
+  days_of_week?: DayOfWeek[] | string[] | string | null;
+  start_time: string;
+  end_time?: string;
+  class_title?: string | null;
+  title?: string | null;
+  is_active?: boolean;
+  active?: boolean;
+  start_date?: string;
+  end_date?: string | null;
+  notes?: string | null;
+}
+
+export interface RecurringRuleWriteRequest {
+  court: number;
+  title: string;
+  days_of_week: DayOfWeek[];
+  start_time: string;
+  start_date: string;
+  end_date?: string | null;
+  active?: boolean;
+  notes?: string | null;
+}
