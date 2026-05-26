@@ -1,18 +1,18 @@
 <div class="min-h-screen bg-[radial-gradient(circle_at_top,_#ef4444_0%,_#b91c1c_50%,_#7f1d1d_100%)] text-white">
   <nav class="border-b border-white/20 bg-black/20 backdrop-blur">
-    <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:flex-nowrap">
       <div class="flex items-center space-x-3">
         <button (click)="goHome()" class="text-2xl hover:opacity-70">&larr;</button>
-        <h1 class="text-2xl font-bold">Panel Admin CSI Tenis</h1>
+        <h1 class="text-xl font-bold sm:text-2xl">Panel Admin CSI Tenis</h1>
       </div>
-      <div class="flex items-center space-x-4">
+      <div class="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end sm:space-x-4">
         <div class="text-right">
           <p class="text-sm text-red-100">Administrador</p>
           <p class="font-bold">{{ (currentAdmin$ | async) || 'Admin' }}</p>
         </div>
         <button
           (click)="logout()"
-          class="rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10"
+          class="shrink-0 rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10"
         >
           Cerrar sesion
         </button>
@@ -20,27 +20,63 @@
     </div>
   </nav>
 
-  <div class="mx-auto max-w-7xl px-4 py-8">
-    <div class="grid grid-cols-1 gap-6 md:grid-cols-4 mb-8">
-      <div class="rounded-lg border border-white/20 bg-white/10 p-6">
-        <h3 class="text-sm font-medium text-red-100 mb-2">Reservas Hoy</h3>
-        <p class="text-3xl font-bold">0</p>
-      </div>
-      <div class="rounded-lg border border-white/20 bg-white/10 p-6">
-        <h3 class="text-sm font-medium text-red-100 mb-2">Solicitudes de Cancelacion</h3>
-        <p class="text-3xl font-bold">0</p>
-      </div>
-      <div class="rounded-lg border border-white/20 bg-white/10 p-6">
-        <h3 class="text-sm font-medium text-red-100 mb-2">Canchas Disponibles</h3>
-        <p class="text-3xl font-bold">0</p>
-      </div>
-      <div class="rounded-lg border border-white/20 bg-white/10 p-6">
-        <h3 class="text-sm font-medium text-red-100 mb-2">Ingresos Hoy</h3>
-        <p class="text-3xl font-bold">$0</p>
+  <div class="mx-auto max-w-7xl px-4 py-4 sm:py-8">
+    <div class="mb-6 rounded-lg border border-white/20 bg-white/10 p-4 md:hidden">
+      <h2 class="mb-3 text-sm font-bold uppercase tracking-[0.12em] text-red-100">Accesos Rapidos</h2>
+      <div class="grid grid-cols-2 gap-2">
+        <button
+          (click)="goToCourts()"
+          class="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+        >
+          Canchas
+        </button>
+        <button
+          (click)="goToPrices()"
+          class="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+        >
+          Precios
+        </button>
+        <button
+          (click)="goToSchedules()"
+          class="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+        >
+          Horarios
+        </button>
+        <button
+          (click)="goToRecurringClasses()"
+          class="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+        >
+          Clases
+        </button>
+        <button
+          (click)="goToReservationPayments()"
+          class="col-span-2 rounded-lg bg-white px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+        >
+          Cobro de Turnos
+        </button>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div class="mb-6 grid grid-cols-2 gap-3 sm:mb-8 sm:gap-6 md:grid-cols-4">
+      <div class="rounded-lg border border-white/20 bg-white/10 p-4 sm:p-6">
+        <h3 class="text-sm font-medium text-red-100 mb-2">Reservas Hoy</h3>
+        <p class="text-2xl font-bold sm:text-3xl">0</p>
+      </div>
+      <div class="rounded-lg border border-white/20 bg-white/10 p-4 sm:p-6">
+        <h3 class="text-sm font-medium text-red-100 mb-2">Solicitudes de Cancelacion</h3>
+        <p class="text-2xl font-bold sm:text-3xl">0</p>
+      </div>
+      <div class="rounded-lg border border-white/20 bg-white/10 p-4 sm:p-6">
+        <h3 class="text-sm font-medium text-red-100 mb-2">Canchas Disponibles</h3>
+        <p class="text-2xl font-bold sm:text-3xl">0</p>
+      </div>
+      <div class="rounded-lg border border-white/20 bg-white/10 p-4 sm:p-6">
+        <h3 class="text-sm font-medium text-red-100 mb-2">Ingresos Hoy</h3>
+        <p class="text-2xl font-bold sm:text-3xl">$0</p>
+      </div>
+    </div>
+
+    <div class="hidden grid-cols-1 gap-6 md:grid md:grid-cols-2 lg:grid-cols-3">
       <div class="rounded-lg border border-white/20 bg-white/10 p-6">
         <h3 class="text-lg font-bold mb-2">Gestionar Canchas</h3>
         <p class="text-sm text-red-100 mb-4">Crear, editar y eliminar canchas de tenis.</p>
