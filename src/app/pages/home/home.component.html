@@ -59,7 +59,7 @@
         <button
           *ngIf="!(isAdmin$ | async)"
           (click)="loginAsAdmin()"
-          class="w-full rounded-lg bg-white px-6 py-3 font-bold text-red-700 hover:bg-red-50"
+          class="w-full rounded-lg bg-white px-6 py-3 font-bold text-red-700 border-2 hover:bg-red-100 hover:border-white cursor-pointer"
         >
           Iniciar sesion
         </button>
@@ -76,7 +76,7 @@
         <p class="mb-6 text-red-100">Reserva una cancha sin registrarte.</p>
         <button
           (click)="bookAsGuest()"
-          class="w-full rounded-lg bg-white px-6 py-3 font-bold text-red-700 border-3 hover:border-red-800 cursor-pointer"
+          class="w-full rounded-lg bg-white px-6 py-3 font-bold text-red-700 border-2 hover:bg-red-100 hover:border-white cursor-pointer"
         >
           Hacer una reserva
         </button>

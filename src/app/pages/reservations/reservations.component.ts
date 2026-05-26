@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
+import { StepProgressComponent } from '../../components/step-progress/step-progress.component';
 import {
   AvailabilityResponse,
   Court,
@@ -25,11 +26,12 @@ interface SlotMeta {
 @Component({
   selector: 'app-reservations',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, StepProgressComponent],
   templateUrl: './reservations.component.html',
   styleUrls: ['./reservations.component.css'],
 })
 export class ReservationsComponent implements OnInit {
+  [x: string]: any;
   reservationForm!: FormGroup;
   courts: Court[] = [];
   prices: Price[] = [];
@@ -42,19 +44,21 @@ export class ReservationsComponent implements OnInit {
   successMessage = '';
 
   currentStep: 'date-court' | 'players' | 'review' | 'payment' = 'date-court';
+  readonly totalSteps = 4;
   selectedDate = '';
   minSelectableDate = '';
   selectedCourt: Court | null = null;
   selectedTime = '';
   confirmedReservationId: number | null = null;
   confirmedTotalPrice: number | null = null;
-  mpPaymentLink = 'https://www.mercadopago.com.ar/';
-  damianWhatsappPhone = '5492302000000';
+  mpPaymentLink = 'https://link.mercadopago.com.ar/turnosdetenis';
+  damianWhatsappPhone = '5492302418200';
 
   timeSlots: string[] = [];
   dayStartLabel = '08:00';
   dayEndLabel = '22:00';
   private readonly slotStepMinutes = 30;
+  private readonly minAdvanceMinutes = 60;
   private slotMetaMap = new Map<string, SlotMeta>();
   private currencyFormatter = new Intl.NumberFormat('es-AR', {
     style: 'currency',
@@ -213,8 +217,7 @@ export class ReservationsComponent implements OnInit {
       } else {
         this.reservationForm.get('contact_name')?.markAsTouched();
         this.reservationForm.get('contact_phone')?.markAsTouched();
-        this.errorMessage =
-          'Completa fecha, cancha, horario y datos de contacto para continuar.';
+        this.errorMessage = 'Completa fecha, cancha, horario y datos de contacto para continuar.';
       }
       return;
     }
@@ -292,6 +295,22 @@ export class ReservationsComponent implements OnInit {
     this.router.navigate(['/']);
   }
 
+  openDatePicker(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    if (!input || input.type !== 'date') {
+      return;
+    }
+
+    const pickerInput = input as HTMLInputElement & { showPicker?: () => void };
+    if (typeof pickerInput.showPicker === 'function') {
+      try {
+        pickerInput.showPicker();
+      } catch {
+        // En algunos navegadores puede requerir gesto valido; fallback es input nativo.
+      }
+    }
+  }
+
   selectSlot(court: CourtAvailability, time: string): void {
     const meta = this.getSlotMeta(court.id, time);
     if (!meta.selectable) {
@@ -332,7 +351,15 @@ export class ReservationsComponent implements OnInit {
     const meta = this.getSlotMeta(courtId, time);
 
     if (meta.status === 'available') {
-      return meta.selectable ? 'Libre' : 'Sin 90 min';
+      if (meta.selectable) {
+        return 'Libre';
+      }
+
+      if (meta.reason === 'INSUFFICIENT_LEAD_TIME') {
+        return 'No disponible';
+      }
+
+      return 'Sin 90 min';
     }
 
     if (meta.status === 'occupied') {
@@ -379,6 +406,9 @@ export class ReservationsComponent implements OnInit {
     }
 
     if (meta.status === 'available' && !meta.selectable) {
+      if (meta.reason === 'INSUFFICIENT_LEAD_TIME') {
+        return 'border-gray-300 bg-gray-100 text-gray-500';
+      }
       return 'border-amber-300 bg-amber-50 text-amber-800';
     }
 
@@ -441,7 +471,9 @@ export class ReservationsComponent implements OnInit {
   }
 
   getWhatsappPaymentLink(): string {
-    const reservationId = this.confirmedReservationId ? `#${this.confirmedReservationId}` : '(sin ID)';
+    const reservationId = this.confirmedReservationId
+      ? `#${this.confirmedReservationId}`
+      : '(sin ID)';
     const court = this.selectedCourt?.name || 'Cancha';
     const date = this.reservationForm.get('date')?.value || '';
     const time = this.reservationForm.get('start_time')?.value || '';
@@ -452,6 +484,36 @@ export class ReservationsComponent implements OnInit {
       `Turno: ${court} ${date} ${time}. Monto: ${amount}.`;
 
     return `https://wa.me/${this.damianWhatsappPhone}?text=${encodeURIComponent(message)}`;
+  }
+
+  getCurrentStepNumber(): number {
+    switch (this.currentStep) {
+      case 'date-court':
+        return 1;
+      case 'players':
+        return 2;
+      case 'review':
+        return 3;
+      case 'payment':
+        return 4;
+      default:
+        return 1;
+    }
+  }
+
+  getCurrentStepLabel(): string {
+    switch (this.currentStep) {
+      case 'date-court':
+        return 'Fecha';
+      case 'players':
+        return 'Jugadores';
+      case 'review':
+        return 'Confirmar';
+      case 'payment':
+        return 'Pago';
+      default:
+        return '';
+    }
   }
 
   private buildAvailabilityGrid(): void {
@@ -562,19 +624,34 @@ export class ReservationsComponent implements OnInit {
 
     const canStartUntilMin = this.timeToMinutes(availableRange.can_start_until);
     let selectable = false;
+    let reason: string | null = null;
 
     if (canStartUntilMin !== null) {
       selectable = availableRange.can_book_90_min && slotMin <= canStartUntilMin;
+      if (!selectable) {
+        reason = 'INSUFFICIENT_DURATION';
+      }
     } else {
       const duration = this.availability?.reservation_duration_minutes || 90;
       const rangeEndMin = this.timeToMinutes(availableRange.end_time);
       selectable =
         availableRange.can_book_90_min && rangeEndMin !== null && slotMin + duration <= rangeEndMin;
+      if (!selectable) {
+        reason = 'INSUFFICIENT_DURATION';
+      }
+    }
+
+    if (selectable && this.isSelectedDateToday()) {
+      const minAllowedSlot = this.getCurrentMinutes() + this.minAdvanceMinutes;
+      if (slotMin < minAllowedSlot) {
+        selectable = false;
+        reason = 'INSUFFICIENT_LEAD_TIME';
+      }
     }
 
     return {
       status: 'available',
-      reason: null,
+      reason,
       displayName: null,
       reservationType: null,
       selectable,
@@ -847,5 +924,17 @@ export class ReservationsComponent implements OnInit {
     const month = String(now.getMonth() + 1).padStart(2, '0');
     const day = String(now.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
+  }
+
+  private getCurrentMinutes(): number {
+    const now = new Date();
+    return now.getHours() * 60 + now.getMinutes();
+  }
+
+  private isSelectedDateToday(): boolean {
+    if (!this.selectedDate) {
+      return false;
+    }
+    return this.selectedDate === this.getLocalDateISO();
   }
 }

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DayOfWeek, Schedule, ScheduleWriteRequest } from '../../models';
@@ -36,6 +36,7 @@ export class AdminSchedulesComponent implements OnInit {
     private readonly apiService: ApiService,
     private readonly formBuilder: FormBuilder,
     private readonly router: Router,
+    private readonly cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -57,10 +58,12 @@ export class AdminSchedulesComponent implements OnInit {
       next: (schedules) => {
         this.schedules = this.sortSchedules(schedules);
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         this.isLoading = false;
         this.errorMessage = error?.error?.detail || 'No se pudieron cargar los horarios.';
+        this.cdr.detectChanges();
       },
     });
   }

@@ -1,3 +1,37 @@
 :host {
   display: block;
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.recurring-page {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+.recurring-page__main > * {
+  min-width: 0;
+}
+
+.recurring-page__panel {
+  min-width: 0;
+}
+
+@media (max-width: 400px) {
+  .recurring-page__nav {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .recurring-page__main {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    padding-top: 1rem;
+  }
+
+  .recurring-page h1 {
+    font-size: 1.4rem;
+    line-height: 1.2;
+  }
 }

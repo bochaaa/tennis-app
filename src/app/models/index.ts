@@ -46,6 +46,31 @@ export interface ReservationResponse {
   status: 'CONFIRMED' | 'CANCELLED' | 'CANCELLATION_REQUESTED';
   total_price: number;
   players: Player[];
+  is_paid?: boolean;
+  paid_at?: string | null;
+  paid_confirmed_by?:
+    | string
+    | {
+        id?: number;
+        username?: string;
+        full_name?: string;
+        first_name?: string;
+        last_name?: string;
+      }
+    | null;
+}
+
+export interface ReservationAdminItem extends ReservationResponse {
+  court?: number | Court;
+  court_name?: string;
+  contact_name?: string;
+  contact_phone?: string;
+  date?: string;
+  start_time?: string;
+}
+
+export interface ReservationPaymentUpdateRequest {
+  is_paid: boolean;
 }
 
 export interface AvailabilityRange {

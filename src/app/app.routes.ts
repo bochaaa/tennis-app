@@ -53,6 +53,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'reservation-payments',
+        loadComponent: () =>
+          import('./pages/admin-reservation-payments/admin-reservation-payments.component').then(
+            (m) => m.AdminReservationPaymentsComponent,
+          ),
+      },
+      {
         path: '',
         redirectTo: 'dashboard',
         pathMatch: 'full',

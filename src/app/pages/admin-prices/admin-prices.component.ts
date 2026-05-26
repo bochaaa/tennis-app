@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Price, PriceWriteRequest } from '../../models';
@@ -29,6 +29,7 @@ export class AdminPricesComponent implements OnInit {
     private readonly apiService: ApiService,
     private readonly formBuilder: FormBuilder,
     private readonly router: Router,
+    private readonly cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
@@ -49,10 +50,12 @@ export class AdminPricesComponent implements OnInit {
       next: (prices) => {
         this.prices = this.sortPrices(prices);
         this.isLoading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         this.isLoading = false;
         this.errorMessage = error?.error?.detail || 'No se pudieron cargar los precios.';
+        this.cdr.detectChanges();
       },
     });
   }

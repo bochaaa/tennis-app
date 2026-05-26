@@ -1,23 +1,25 @@
 <div
-  class="min-h-screen bg-[radial-gradient(circle_at_top,_#ef4444_0%,_#b91c1c_45%,_#7f1d1d_100%)] text-white"
+  class="recurring-page min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,_#ef4444_0%,_#b91c1c_45%,_#7f1d1d_100%)] text-white"
 >
   <nav class="border-b border-white/20 bg-black/20 backdrop-blur">
-    <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-4">
+    <div
+      class="recurring-page__nav mx-auto flex max-w-6xl flex-wrap items-start justify-between gap-3 px-4 py-4 sm:flex-nowrap sm:items-center"
+    >
       <div>
-        <p class="text-sm uppercase tracking-[0.2em] text-red-100">CSI Tenis</p>
+        <p class="text-sm uppercase tracking-[0.14em] text-red-100 sm:tracking-[0.2em]">CSI Tenis</p>
         <h1 class="text-2xl font-bold">Clases Recurrentes</h1>
       </div>
       <button
         (click)="goToDashboard()"
-        class="rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10"
+        class="w-full shrink-0 rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10 sm:w-auto"
       >
         Volver al panel
       </button>
     </div>
   </nav>
 
-  <main class="mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-5">
-    <section class="rounded-xl border border-white/20 bg-white/10 p-6 lg:col-span-2">
+  <main class="recurring-page__main mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-5">
+    <section class="recurring-page__panel rounded-xl border border-white/20 bg-white/10 p-4 sm:p-6 lg:col-span-2">
       <h2 class="mb-4 text-xl font-semibold">
         {{ editingRuleId ? 'Editar clase' : 'Nueva clase' }}
       </h2>
@@ -45,7 +47,7 @@
           <input
             formControlName="title"
             type="text"
-            placeholder="Escuela de tenis"
+            placeholder="Jose Gomez"
             class="w-full rounded-lg border border-white/30 bg-white/95 px-4 py-2 text-gray-900 outline-none focus:border-red-300"
           />
         </div>
@@ -90,7 +92,6 @@
             <button
               type="button"
               (click)="addTimeSlot()"
-              [disabled]="editingRuleId !== null"
               class="rounded-md border border-white/30 px-2 py-1 text-xs hover:bg-white/10 disabled:opacity-50"
             >
               + Agregar
@@ -102,10 +103,10 @@
             [formGroupName]="i"
             class="mb-2 rounded-md border border-white/20 p-2"
           >
-            <div class="flex flex-wrap items-center gap-2">
+            <div class="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
               <select
                 formControlName="day_of_week"
-                class="min-w-[300px] flex-1 rounded-lg border border-white/30 bg-white/95 px-2 py-2 text-gray-900 outline-none focus:border-red-300"
+                class="w-full min-w-0 rounded-lg border border-white/30 bg-white/95 px-2 py-2 text-gray-900 outline-none focus:border-red-300 sm:min-w-[220px] sm:flex-1"
               >
                 <option *ngFor="let day of daysOfWeek" [value]="day">
                   {{ getDayLabel(day) }}
@@ -116,21 +117,21 @@
                 formControlName="start_time"
                 type="time"
                 (change)="onStartTimeChanged(i)"
-                class="w-[110px] rounded-lg border border-white/30 bg-white/95 px-2 py-2 text-gray-900 outline-none focus:border-red-300"
+                class="w-full rounded-lg border border-white/30 bg-white/95 px-2 py-2 text-gray-900 outline-none focus:border-red-300 sm:w-[110px]"
               />
 
               <input
                 formControlName="end_time"
                 type="time"
                 readonly
-                class="w-[110px] rounded-lg border border-white/30 bg-gray-100 px-2 py-2 text-gray-700 outline-none"
+                class="w-full rounded-lg border border-white/30 bg-gray-100 px-2 py-2 text-gray-700 outline-none sm:w-[110px]"
               />
 
               <button
                 type="button"
                 (click)="removeTimeSlot(i)"
-                [disabled]="timeSlots.length <= 1 || editingRuleId !== null"
-                class="h-10 w-10 rounded-lg border border-white/30 text-sm font-bold hover:bg-white/10 disabled:opacity-50"
+                [disabled]="timeSlots.length <= 1"
+                class="h-10 w-full rounded-lg border border-white/30 text-sm font-bold hover:bg-white/10 disabled:opacity-50 sm:w-10"
                 aria-label="Eliminar horario"
                 title="Eliminar horario"
               >
@@ -138,13 +139,9 @@
               </button>
             </div>
           </div>
-
-          <p *ngIf="editingRuleId !== null" class="text-xs text-red-100">
-            En modo edicion se modifica una sola clase por vez.
-          </p>
         </div>
 
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           <button
             type="submit"
             [disabled]="isSaving"
@@ -168,29 +165,6 @@
         </p>
       </form>
 
-      <div class="mt-6 border-t border-white/20 pt-4">
-        <h3 class="mb-2 text-base font-semibold">Generar clases manualmente (opcional)</h3>
-        <form [formGroup]="generateForm" (ngSubmit)="generateReservations()" class="space-y-3">
-          <div>
-            <label class="mb-2 block text-sm font-medium">Dias a generar</label>
-            <input
-              formControlName="days_ahead"
-              type="number"
-              min="1"
-              max="365"
-              class="w-full rounded-lg border border-white/30 bg-white/95 px-4 py-2 text-gray-900 outline-none focus:border-red-300"
-            />
-          </div>
-          <button
-            type="submit"
-            [disabled]="isGenerating"
-            class="w-full rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10 disabled:opacity-60"
-          >
-            {{ isGenerating ? 'Generando...' : 'Generar clases' }}
-          </button>
-        </form>
-      </div>
-
       <p
         *ngIf="errorMessage"
         class="mt-4 rounded-lg border border-red-300/60 bg-red-900/40 px-3 py-2 text-sm"
@@ -205,7 +179,7 @@
       </p>
     </section>
 
-    <section class="rounded-xl border border-white/20 bg-white/10 p-6 lg:col-span-3">
+    <section class="recurring-page__panel rounded-xl border border-white/20 bg-white/10 p-4 sm:p-6 lg:col-span-3">
       <div class="mb-4 flex items-center justify-between">
         <h2 class="text-xl font-semibold">Clases cargadas</h2>
         <button
@@ -225,26 +199,46 @@
         Todavia no hay clases cargadas.
       </div>
 
-      <div *ngIf="!isLoading && recurringRules.length > 0" class="space-y-3">
+      <div *ngIf="!isLoading && recurringRules.length > 0" class="mb-4">
+        <p class="mb-2 text-sm font-semibold text-red-100">Filtrar por dia (solo clases activas)</p>
+        <div class="flex flex-wrap gap-2">
+          <button
+            *ngFor="let day of dayFilters"
+            type="button"
+            (click)="setDayFilter(day)"
+            class="rounded-full border px-3 py-1 text-xs font-semibold transition"
+            [ngClass]="
+              isDayFilterActive(day)
+                ? 'border-white bg-white text-red-700'
+                : 'border-white/40 bg-black/20 text-red-100 hover:bg-white/10'
+            "
+          >
+            {{ getDayFilterLabel(day) }}
+          </button>
+        </div>
+      </div>
+
+      <div
+        *ngIf="!isLoading && recurringRules.length > 0 && filteredRecurringRules.length === 0"
+        class="rounded-lg border border-white/20 p-4 text-sm text-red-100"
+      >
+        {{ getEmptyFilterMessage() }}
+      </div>
+
+      <div *ngIf="!isLoading && filteredRecurringRules.length > 0" class="space-y-3">
         <article
-          *ngFor="let rule of recurringRules"
-          class="flex items-center justify-between rounded-lg border border-white/20 bg-black/10 p-4"
+          *ngFor="let rule of filteredRecurringRules"
+          class="flex flex-col items-start justify-between gap-3 rounded-lg border border-white/20 bg-black/10 p-4 sm:flex-row sm:items-center"
         >
-          <div>
+          <div class="min-w-0">
             <p class="font-semibold">Titulo: {{ getRuleTitle(rule) }}</p>
             <p class="text-sm text-red-100">Cancha: {{ getRuleCourtName(rule) }}</p>
-            <p class="text-sm text-red-100">
-              Dia: {{ getRuleDaysLabel(rule) }}
-            </p>
-            <p class="text-sm text-red-100">
-              Hora: {{ getRuleTimeLabel(rule) }}
-            </p>
-            <p class="text-xs text-red-200">
-              Estado: {{ getRuleActiveLabel(rule) }}
-            </p>
+            <p class="text-sm text-red-100">Dia: {{ getRuleDaysLabel(rule) }}</p>
+            <p class="text-sm text-red-100">Hora: {{ getRuleTimeLabel(rule) }}</p>
+            <p class="text-xs text-red-200">Estado: {{ getRuleActiveLabel(rule) }}</p>
           </div>
 
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <button
               (click)="editRule(rule)"
               class="rounded-md border border-white/30 px-3 py-1 text-sm hover:bg-white/10"

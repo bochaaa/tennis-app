@@ -45,4 +45,8 @@ export class AdminDashboardComponent {
   goToRecurringClasses(): void {
     this.router.navigate(['/admin/recurring-classes']);
   }
+
+  goToReservationPayments(): void {
+    this.router.navigate(['/admin/reservation-payments']);
+  }
 }

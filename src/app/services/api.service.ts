@@ -11,6 +11,8 @@ import {
   PriceWriteRequest,
   RecurringRule,
   RecurringRuleWriteRequest,
+  ReservationAdminItem,
+  ReservationPaymentUpdateRequest,
   ReservationRequest,
   ReservationResponse,
   Schedule,
@@ -59,6 +61,36 @@ export class ApiService {
 
   getReservation(id: number): Observable<ReservationResponse> {
     return this.http.get<ReservationResponse>(`${this.apiUrl}/reservations/${id}/`);
+  }
+
+  getReservationsAdmin(filters?: {
+    date?: string;
+    is_paid?: boolean;
+    unpaid?: boolean;
+  }): Observable<ReservationAdminItem[]> {
+    let params = new HttpParams();
+
+    if (filters?.date) {
+      params = params.set('date', filters.date);
+    }
+    if (typeof filters?.is_paid === 'boolean') {
+      params = params.set('is_paid', String(filters.is_paid));
+    }
+    if (typeof filters?.unpaid === 'boolean') {
+      params = params.set('unpaid', String(filters.unpaid));
+    }
+
+    return this.http.get<ReservationAdminItem[]>(`${this.apiUrl}/reservations/`, { params });
+  }
+
+  updateReservationPaymentStatus(
+    reservationId: number,
+    data: ReservationPaymentUpdateRequest,
+  ): Observable<ReservationAdminItem> {
+    return this.http.patch<ReservationAdminItem>(
+      `${this.apiUrl}/reservations/${reservationId}/payment/`,
+      data,
+    );
   }
 
   requestCancellation(reservationId: number, data: CancellationRequest): Observable<unknown> {
