@@ -9,5 +9,6 @@ export const environment = {
     messagingSenderId: '61905597245',
     appId: '1:61905597245:web:e9fa2b4597d3f0327c4b54',
   },
-  firebaseVapidKey: '',
+  firebaseVapidKey:
+    'BL1lVeVqYC63vIe73-VS2q76s-lUviX697s7NJ9i468m1iZ3iE9kmbKdxELjnm31yHeIhzczL2Rd4J0JyQa1AtY',
 };
