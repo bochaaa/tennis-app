@@ -12,12 +12,27 @@ import {
   RecurringRule,
   RecurringRuleWriteRequest,
   ReservationAdminItem,
+  ReservationCashPaymentRequest,
+  ReservationPaymentLinkRequest,
+  ReservationPaymentLinkResponse,
+  ReservationPaymentSearchResult,
   ReservationPaymentUpdateRequest,
   ReservationRequest,
   ReservationResponse,
   Schedule,
   ScheduleWriteRequest,
 } from '../models';
+
+export interface NotificationDeviceRequest {
+  platform: 'web';
+  provider: 'fcm';
+  token: string;
+  device_id: string;
+}
+
+export interface NotificationDeviceUnregisterRequest {
+  token: string;
+}
 
 @Injectable({
   providedIn: 'root',
@@ -63,6 +78,46 @@ export class ApiService {
     return this.http.get<ReservationResponse>(`${this.apiUrl}/reservations/${id}/`);
   }
 
+  getReservationPaymentStatus(reservationId: number): Observable<ReservationResponse> {
+    return this.http.get<ReservationResponse>(
+      `${this.apiUrl}/reservations/${reservationId}/payment-status/`,
+    );
+  }
+
+  createReservationPaymentLink(
+    reservationId: number,
+    data: ReservationPaymentLinkRequest,
+  ): Observable<ReservationPaymentLinkResponse> {
+    return this.http.post<ReservationPaymentLinkResponse>(
+      `${this.apiUrl}/reservations/${reservationId}/payments/create-link/`,
+      data,
+    );
+  }
+
+  confirmReservationCashPayment(
+    reservationId: number,
+    data: ReservationCashPaymentRequest,
+  ): Observable<ReservationResponse> {
+    return this.http.post<ReservationResponse>(
+      `${this.apiUrl}/reservations/${reservationId}/payments/cash/`,
+      data,
+    );
+  }
+
+  searchReservationPaymentsByPlayer(q: string): Observable<ReservationPaymentSearchResult[]> {
+    const params = new HttpParams().set('q', q);
+    return this.http.get<ReservationPaymentSearchResult[]>(
+      `${this.apiUrl}/reservations/payments/search-by-player/`,
+      { params },
+    );
+  }
+
+  getPendingTodayReservationPayments(): Observable<ReservationPaymentSearchResult[]> {
+    return this.http.get<ReservationPaymentSearchResult[]>(
+      `${this.apiUrl}/reservations/payments/pending-today/`,
+    );
+  }
+
   getReservationsAdmin(filters?: {
     date?: string;
     is_paid?: boolean;
@@ -91,6 +146,14 @@ export class ApiService {
       `${this.apiUrl}/reservations/${reservationId}/payment/`,
       data,
     );
+  }
+
+  exportMercadoPagoReportCsv(startDate: string, endDate: string): Observable<Blob> {
+    const params = new HttpParams().set('start_date', startDate).set('end_date', endDate);
+    return this.http.get(`${this.apiUrl}/payments/reports/mercadopago.csv/`, {
+      params,
+      responseType: 'blob',
+    });
   }
 
   requestCancellation(reservationId: number, data: CancellationRequest): Observable<unknown> {
@@ -166,5 +229,13 @@ export class ApiService {
   generateRecurringRules(daysAhead: number): Observable<unknown> {
     const params = new HttpParams().set('days_ahead', String(daysAhead));
     return this.http.post(`${this.apiUrl}/recurring-rules/generate/`, null, { params });
+  }
+
+  registerNotificationDevice(data: NotificationDeviceRequest): Observable<unknown> {
+    return this.http.post(`${this.apiUrl}/notification-devices/`, data);
+  }
+
+  unregisterNotificationDevice(data: NotificationDeviceUnregisterRequest): Observable<unknown> {
+    return this.http.post(`${this.apiUrl}/notification-devices/unregister/`, data);
   }
 }

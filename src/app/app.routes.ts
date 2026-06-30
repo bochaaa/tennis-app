@@ -14,8 +14,39 @@ export const routes: Routes = [
     component: LoginComponent,
   },
   {
+    path: 'reservations/payments',
+    loadComponent: () =>
+      import('./pages/reservation-payment-search/reservation-payment-search.component').then(
+        (m) => m.ReservationPaymentSearchComponent,
+      ),
+  },
+  {
     path: 'reservations',
     component: ReservationsComponent,
+  },
+  {
+    path: 'pago/success',
+    loadComponent: () =>
+      import('./pages/payment-return/payment-return.component').then(
+        (m) => m.PaymentReturnComponent,
+      ),
+    data: { state: 'success' },
+  },
+  {
+    path: 'pago/failure',
+    loadComponent: () =>
+      import('./pages/payment-return/payment-return.component').then(
+        (m) => m.PaymentReturnComponent,
+      ),
+    data: { state: 'failure' },
+  },
+  {
+    path: 'pago/pending',
+    loadComponent: () =>
+      import('./pages/payment-return/payment-return.component').then(
+        (m) => m.PaymentReturnComponent,
+      ),
+    data: { state: 'pending' },
   },
   {
     path: 'admin',

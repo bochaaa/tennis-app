@@ -1,0 +1,343 @@
+<div
+  class="min-h-screen bg-[radial-gradient(circle_at_top,_#ef4444_0%,_#b91c1c_45%,_#7f1d1d_100%)] py-8 px-4 text-white"
+>
+  <div class="mx-auto max-w-5xl">
+    <div class="mb-6 rounded-lg bg-white p-6 text-gray-900 shadow-lg">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center space-x-3">
+          <button type="button" (click)="goHome()" class="text-2xl hover:opacity-70"><-</button>
+          <div>
+            <h1 class="text-3xl font-bold text-red-700">Pagar una reserva</h1>
+            <p class="mt-1 text-sm text-gray-600">
+              Puedes buscar una reserva por el nombre del jugador o ver las reservas pendientes de
+              hoy.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <section class="rounded-lg bg-white p-6 text-gray-900 shadow-lg">
+      <div
+        class="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3"
+      >
+        <div>
+          <p class="text-sm font-bold text-amber-900">Pendientes del dia</p>
+          <p class="text-xs text-amber-800">
+            Esta lista carga automaticamente las reservas de hoy con saldo pendiente.
+          </p>
+        </div>
+        <button
+          type="button"
+          (click)="loadPendingToday()"
+          [disabled]="isLoading"
+          class="rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-bold text-amber-900 transition hover:bg-amber-100 disabled:opacity-60"
+        >
+          Actualizar pendientes
+        </button>
+      </div>
+
+      <form [formGroup]="searchForm" (ngSubmit)="search()" class="flex flex-col gap-3 sm:flex-row sm:items-start">
+        <div class="flex-1">
+          <label class="mb-2 block text-sm font-medium text-gray-700">Jugador</label>
+          <input
+            type="search"
+            formControlName="q"
+            class="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-red-400"
+            placeholder="Ej: jose hernandez"
+          />
+          <p
+            *ngIf="searchForm.get('q')?.invalid && searchForm.get('q')?.touched"
+            class="mt-1 text-xs text-red-600"
+          >
+            Ingresa al menos 3 caracteres.
+          </p>
+        </div>
+
+        <div class="flex sm:pt-7">
+          <button
+            type="submit"
+            [disabled]="isLoading"
+            class="h-12 w-full rounded-lg bg-red-700 px-6 font-bold text-white transition hover:bg-red-800 disabled:bg-gray-400 sm:w-auto"
+          >
+            {{ isLoading ? 'Buscando...' : 'Buscar' }}
+          </button>
+        </div>
+      </form>
+
+      <p *ngIf="isLoading" class="mt-5 text-sm font-semibold text-gray-700">
+        {{ listMode === 'today' ? 'Cargando pendientes de hoy...' : 'Buscando reservas...' }}
+      </p>
+
+      <p
+        *ngIf="errorMessage"
+        class="mt-5 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+      >
+        {{ errorMessage }}
+      </p>
+
+      <p
+        *ngIf="successMessage"
+        class="mt-5 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700"
+      >
+        {{ successMessage }}
+      </p>
+
+      <div
+        *ngIf="!isLoading && reservations.length === 0 && !errorMessage"
+        class="mt-5 rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-700"
+      >
+        {{ getEmptyResultsMessage() }}
+      </div>
+
+      <div *ngIf="reservations.length > 0" class="mt-6 space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-xl font-bold text-gray-900">{{ getResultsTitle() }}</h2>
+          <span class="text-sm font-semibold text-gray-500">
+            {{ reservations.length }} resultado{{ reservations.length === 1 ? '' : 's' }}
+          </span>
+        </div>
+
+        <article
+          *ngFor="let reservation of reservations"
+          class="rounded-lg border border-gray-200 bg-gray-50 p-3 sm:p-4"
+        >
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p class="text-lg font-bold text-gray-900">Reserva #{{ reservation.id }}</p>
+              <p class="text-sm text-gray-600">
+                {{ getCourtName(reservation) }} - {{ getReservationWhenLabel(reservation) }}
+              </p>
+            </div>
+            <span
+              class="rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-900"
+            >
+              {{ getPaymentStatusLabel(reservation.payment_status) }}
+            </span>
+          </div>
+
+          <div class="mt-4 grid grid-cols-3 gap-2 sm:gap-3">
+            <div class="rounded-lg bg-white p-3">
+              <p class="text-xs text-gray-500">Total</p>
+              <p class="text-sm font-bold text-gray-900 sm:text-base">
+                {{ formatCurrency(getTotalAmount(reservation)) }}
+              </p>
+            </div>
+            <div class="rounded-lg bg-white p-3">
+              <p class="text-xs text-gray-500">Pagado</p>
+              <p class="text-sm font-bold text-emerald-700 sm:text-base">
+                {{ formatCurrency(getPaidAmount(reservation)) }}
+              </p>
+            </div>
+            <div class="rounded-lg bg-white p-3">
+              <p class="text-xs text-gray-500">Pendiente</p>
+              <p class="text-sm font-bold text-amber-800 sm:text-base">
+                {{ formatCurrency(getRemainingAmount(reservation)) }}
+              </p>
+            </div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
+            <button
+              type="button"
+              (click)="payRemainingAmount(reservation)"
+              [disabled]="isCreatingPaymentLink('total-' + reservation.id)"
+              class="flex h-10 w-full items-center justify-center rounded-lg border border-sky-200 bg-white px-4 transition hover:bg-sky-50 disabled:bg-gray-100 sm:w-auto"
+              aria-label="Pagar total con Mercado Pago"
+            >
+              <span
+                *ngIf="isCreatingPaymentLink('total-' + reservation.id); else mercadoPagoLogo"
+                class="text-sm font-bold text-sky-700"
+              >
+                Creando link...
+              </span>
+              <ng-template #mercadoPagoLogo>
+                <img
+                  src="assets/MP_CMYK_HANDSHAKE_color_horizontal.svg"
+                  alt="Mercado Pago"
+                  class="h-7 w-auto"
+                />
+              </ng-template>
+            </button>
+
+            <button
+              type="button"
+              (click)="openCashPaymentModal(reservation, 'total')"
+              [disabled]="!canConfirmCashPayment(reservation)"
+              class="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:bg-gray-300 disabled:text-gray-600 sm:w-auto sm:px-4"
+            >
+              Pago efectivo
+            </button>
+
+            <button
+              type="button"
+              (click)="toggleIndividualPayments(reservation)"
+              [disabled]="getMatchingPlayers(reservation).length === 0"
+              class="col-span-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-gray-800 transition hover:bg-gray-100 disabled:bg-gray-100 disabled:text-gray-400 sm:col-span-1 sm:w-auto sm:px-4"
+            >
+              {{
+                isIndividualPaymentsExpanded(reservation)
+                  ? 'Ocultar pago individual'
+                  : 'Pago individual'
+              }}
+            </button>
+          </div>
+
+          <div
+            *ngIf="isIndividualPaymentsExpanded(reservation)"
+            class="mt-4 rounded-lg border border-gray-200 bg-white p-3 sm:p-4"
+          >
+            <h3 class="font-bold text-gray-800">{{ getPlayersSectionTitle() }}</h3>
+            <div class="mt-3 space-y-2">
+              <div
+                *ngFor="let player of getMatchingPlayers(reservation)"
+                class="grid grid-cols-1 items-center gap-3 rounded-lg bg-gray-50 p-3 md:grid-cols-[1fr_auto]"
+              >
+                <div>
+                  <p class="font-semibold text-gray-800">{{ getPlayerFullName(player) }}</p>
+                  <p class="text-xs text-gray-600">
+                    {{ player.is_member ? 'Socio' : 'No socio' }} -
+                    {{ formatCurrency(getPlayerPrice(player)) }}
+                  </p>
+                </div>
+                <div
+                  class="grid w-full grid-cols-2 gap-2 md:w-auto md:grid-cols-none md:auto-cols-max md:grid-flow-col md:justify-end"
+                >
+                  <button
+                    type="button"
+                    (click)="payPlayerShare(reservation, player)"
+                    [disabled]="
+                      isPlayerPaid(reservation, player) ||
+                      isCreatingPaymentLink('player-' + reservation.id + '-' + player.id)
+                    "
+                    class="w-full rounded-lg bg-emerald-600 px-3 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:bg-gray-300 disabled:text-gray-600 md:w-auto md:min-w-32 md:px-4"
+                  >
+                    {{
+                      isPlayerPaid(reservation, player)
+                        ? 'Pagado'
+                        : isCreatingPaymentLink('player-' + reservation.id + '-' + player.id)
+                          ? 'Creando...'
+                          : 'Pagar mi parte'
+                    }}
+                  </button>
+
+                  <button
+                    type="button"
+                    (click)="openCashPaymentModal(reservation, 'player', player)"
+                    [disabled]="
+                      isPlayerPaid(reservation, player) || !canConfirmCashPayment(reservation)
+                    "
+                    class="w-full rounded-lg border border-emerald-600 px-3 py-2 text-sm font-bold text-emerald-700 transition hover:bg-emerald-50 disabled:border-gray-300 disabled:text-gray-500 md:w-auto md:min-w-28 md:px-4"
+                  >
+                    Efectivo
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+  </div>
+
+  <div
+    *ngIf="cashPaymentReservation"
+    class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 py-6"
+  >
+    <div class="w-full max-w-lg rounded-lg bg-white p-5 text-gray-900 shadow-2xl">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+            Pago en efectivo
+          </p>
+          <h2 class="mt-1 text-xl font-bold text-gray-950">{{ getCashPaymentTitle() }}</h2>
+        </div>
+        <button
+          type="button"
+          (click)="closeCashPaymentModal()"
+          [disabled]="isConfirmingCashPayment"
+          class="rounded-lg border border-gray-300 px-3 py-1 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+        >
+          Cerrar
+        </button>
+      </div>
+
+      <div class="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm">
+        <p>
+          <span class="font-semibold text-gray-600">Reserva:</span> #{{ cashPaymentReservation.id }}
+        </p>
+        <p>
+          <span class="font-semibold text-gray-600">Turno:</span>
+          {{ getCourtName(cashPaymentReservation) }} -
+          {{ getReservationWhenLabel(cashPaymentReservation) }}
+        </p>
+        <p *ngIf="cashPaymentMode === 'player'">
+          <span class="font-semibold text-gray-600">Jugador:</span> {{ getCashPaymentPlayerName() }}
+        </p>
+        <p>
+          <span class="font-semibold text-gray-600">Monto:</span> {{ getCashPaymentAmountLabel() }}
+        </p>
+      </div>
+
+      <form [formGroup]="cashPaymentForm" (ngSubmit)="confirmCashPayment()" class="mt-4 space-y-4">
+        <div *ngIf="cashPaymentMode === 'partial'">
+          <label class="mb-2 block text-sm font-medium text-gray-700">Monto recibido</label>
+          <input
+            type="number"
+            min="1"
+            step="0.01"
+            formControlName="amount"
+            class="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-emerald-500"
+            placeholder="Ej: 10000"
+          />
+        </div>
+
+        <div>
+          <label class="mb-2 block text-sm font-medium text-gray-700">Clave de confirmacion</label>
+          <input
+            type="password"
+            formControlName="confirmation_password"
+            class="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-emerald-500"
+          />
+          <p
+            *ngIf="
+              cashPaymentForm.get('confirmation_password')?.invalid &&
+              cashPaymentForm.get('confirmation_password')?.touched
+            "
+            class="mt-1 text-xs text-red-600"
+          >
+            Ingresa la clave para confirmar.
+          </p>
+        </div>
+
+        <div>
+          <label class="mb-2 block text-sm font-medium text-gray-700">Notas</label>
+          <textarea
+            formControlName="notes"
+            rows="3"
+            class="w-full rounded-lg border border-gray-300 px-4 py-3 outline-none focus:border-emerald-500"
+            placeholder="Pago recibido en caja"
+          ></textarea>
+        </div>
+
+        <div class="flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            (click)="closeCashPaymentModal()"
+            [disabled]="isConfirmingCashPayment"
+            class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-bold text-gray-700 transition hover:bg-gray-50 disabled:opacity-60"
+          >
+            Cancelar
+          </button>
+          <button
+            type="submit"
+            [disabled]="isConfirmingCashPayment"
+            class="rounded-lg bg-emerald-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-800 disabled:bg-emerald-300"
+          >
+            {{ isConfirmingCashPayment ? 'Confirmando...' : 'Confirmar efectivo' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

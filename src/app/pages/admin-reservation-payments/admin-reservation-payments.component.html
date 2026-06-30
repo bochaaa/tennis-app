@@ -65,6 +65,40 @@
         la fecha seleccionada.
       </p>
 
+      <div class="mb-5 rounded-lg border border-white/20 bg-black/10 p-4">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p class="text-sm font-bold text-white">Resumen mensual para Rentas</p>
+            <p class="mt-1 text-xs text-red-100">
+              Exporta el CSV de pagos Mercado Pago del mes de la fecha seleccionada.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap items-end gap-3">
+            <div>
+              <label class="mb-2 block text-sm font-semibold text-red-100">Fecha del mes</label>
+              <input
+                type="date"
+                [value]="selectedReportDate"
+                (click)="openDatePicker($event)"
+                (focus)="openDatePicker($event)"
+                (change)="onReportDateChanged($event)"
+                class="w-48 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 outline-none focus:border-red-400"
+              />
+            </div>
+
+            <button
+              type="button"
+              (click)="exportMonthlyMercadoPagoReport()"
+              [disabled]="isExportingMonthlyReport"
+              class="rounded-lg bg-white px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50 disabled:bg-white/60 disabled:text-red-300"
+            >
+              {{ isExportingMonthlyReport ? 'Exportando...' : 'Exportar CSV' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
       <p
         *ngIf="errorMessage"
         class="mb-4 rounded-lg border border-red-300/60 bg-red-900/40 px-3 py-2 text-sm"

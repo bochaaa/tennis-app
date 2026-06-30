@@ -73,8 +73,8 @@ src/app/
 
 - ✓ Interfaz de bienvenida
 - ✓ Dos opciones principales:
-  - Acceso como Admin (con login)
-  - Acceso como Invitado (reservar sin login)
+  -✓Acceso como Admin (con login)
+  ✓cceso como Invitado (reservar sin login)
 - ✓ Indicador de estado de administrador
 - ✓ Botón de cerrar sesión (si está logueado)
 
@@ -104,9 +104,9 @@ src/app/
 - ✓ Interfaz principal del panel admin
 - ✓ Cards de estadísticas (placeholders)
 - ✓ Menú de gestión:
-  - Gestionar Canchas
-  - Gestionar Precios
-  - Gestionar Horarios
+  -✓ Gestionar Canchas
+  -✓ Gestionar Precios
+  -✓ Gestionar Horarios
   - Ver Reservas
   - Clases Recurrentes
   - Bloqueos de Horarios

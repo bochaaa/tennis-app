@@ -1,0 +1,73 @@
+<div
+  class="min-h-screen bg-[radial-gradient(circle_at_top,_#ef4444_0%,_#b91c1c_45%,_#7f1d1d_100%)] py-8 px-4 text-white"
+>
+  <main class="mx-auto max-w-3xl rounded-lg bg-white p-6 text-gray-900 shadow-lg">
+    <p class="text-sm font-semibold uppercase tracking-[0.16em] text-red-700">Mercado Pago</p>
+    <h1 class="mt-2 text-3xl font-bold text-gray-900">{{ getTitle() }}</h1>
+    <p class="mt-3 text-sm text-gray-700">{{ getBody() }}</p>
+
+    <div
+      *ngIf="!reservationId"
+      class="mt-6 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+    >
+      No recibimos el identificador de la reserva en la URL. Puedes buscarla por jugador para ver
+      si sigue con saldo pendiente.
+    </div>
+
+    <p
+      *ngIf="errorMessage"
+      class="mt-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+    >
+      {{ errorMessage }}
+    </p>
+
+    <div *ngIf="reservation" class="mt-6 space-y-4">
+      <div class="rounded-lg border px-4 py-3 text-sm font-semibold" [ngClass]="getStatusClasses()">
+        {{ getPaymentStatusLabel() }}
+      </div>
+
+      <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div class="rounded-lg bg-gray-50 p-4">
+          <p class="text-xs text-gray-500">Total</p>
+          <p class="text-lg font-bold text-gray-900">{{ getTotalAmount() }}</p>
+        </div>
+        <div class="rounded-lg bg-gray-50 p-4">
+          <p class="text-xs text-gray-500">Pagado</p>
+          <p class="text-lg font-bold text-emerald-700">{{ getPaidAmount() }}</p>
+        </div>
+        <div class="rounded-lg bg-gray-50 p-4">
+          <p class="text-xs text-gray-500">Pendiente</p>
+          <p class="text-lg font-bold text-amber-800">{{ getRemainingAmount() }}</p>
+        </div>
+      </div>
+    </div>
+
+    <p *ngIf="isLoading" class="mt-5 text-sm text-gray-600">Consultando estado de pago...</p>
+
+    <div class="mt-8 flex flex-wrap gap-3 border-t pt-5">
+      <button
+        type="button"
+        *ngIf="reservationId"
+        (click)="refreshPaymentStatus(false)"
+        [disabled]="isLoading"
+        class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+      >
+        Actualizar estado
+      </button>
+      <button
+        type="button"
+        (click)="goToPaymentSearch()"
+        class="rounded-lg bg-red-700 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-800"
+      >
+        Buscar reserva
+      </button>
+      <button
+        type="button"
+        (click)="goHome()"
+        class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+      >
+        Volver al inicio
+      </button>
+    </div>
+  </main>
+</div>

@@ -272,6 +272,14 @@
       <div *ngIf="currentStep === 'review'" class="space-y-6">
         <h2 class="mb-6 text-2xl font-bold text-gray-800">Revisa tu reserva</h2>
 
+        <div class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <p class="font-bold">Importante</p>
+          <p class="mt-1">
+            Si la reserva no recibe al menos un pago parcial de alguno de los jugadores dentro de
+            la primera hora desde su creacion, se cancelara automaticamente.
+          </p>
+        </div>
+
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div class="rounded-lg bg-gray-50 p-4">
             <p class="text-xs text-gray-600">Cancha</p>
@@ -349,53 +357,121 @@
         </div>
 
         <div class="rounded-lg border border-gray-200 bg-gray-50 p-5">
-          <h3 class="text-lg font-bold text-gray-800">Paso 4: Realizar pago</h3>
-          <p class="mt-2 text-sm text-gray-700">
-            Monto a pagar:
-            <strong>{{ formatCurrency(getPaymentAmount()) }}</strong>
-          </p>
-
-          <div
-            class="mt-4 rounded-lg border border-dashed border-gray-300 bg-white p-6 text-center"
-          >
-            <p class="text-sm text-gray-700">QR de pago (Mercado Pago)</p>
-            <p class="mt-2 text-xs text-gray-500">Escanea el QR para abonar la reserva.</p>
-            <img
-              src="assets/mercado_pago_qr_320.png"
-              srcset="
-                assets/mercado_pago_qr_320.png 320w,
-                assets/mercado_pago_qr_512.png 512w
-              "
-              sizes="(max-width: 640px) 220px, 280px"
-              alt="QR de Mercado Pago para abonar la reserva"
-              loading="lazy"
-              class="mx-auto mt-4 w-[220px] max-w-full rounded-lg border border-gray-200 p-1 sm:w-[280px]"
-            />
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h3 class="text-lg font-bold text-gray-800">Paso 4: Realizar pago</h3>
+              <p class="mt-1 text-sm text-gray-700">
+                El pago se confirma automaticamente cuando Mercado Pago avisa al club.
+              </p>
+            </div>
+            <button
+              type="button"
+              (click)="refreshPaymentStatus()"
+              [disabled]="isRefreshingPaymentStatus"
+              class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-100 disabled:opacity-60"
+            >
+              {{ isRefreshingPaymentStatus ? 'Actualizando...' : 'Actualizar estado' }}
+            </button>
           </div>
 
-          <a
-            [href]="mpPaymentLink"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="mt-4 inline-flex rounded-lg bg-sky-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-sky-700"
+          <div
+            class="mt-4 rounded-lg border px-4 py-3 text-sm font-semibold"
+            [ngClass]="getPaymentStatusClasses()"
           >
-            Abrir link de pago MP
-          </a>
-        </div>
+            {{ getPaymentStatusLabel() }}
+          </div>
 
-        <div class="rounded-lg border border-gray-200 bg-white p-5">
-          <h3 class="text-lg font-bold text-gray-800">Enviar comprobante</h3>
-          <p class="mt-2 text-sm text-gray-700">
-            Cuando pagues, envia el comprobante a Damian por WhatsApp.
+          <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div class="rounded-lg bg-white p-4">
+              <p class="text-xs text-gray-500">Cancha</p>
+              <p class="font-bold text-gray-900">{{ getConfirmedCourtLabel() }}</p>
+            </div>
+            <div class="rounded-lg bg-white p-4 sm:col-span-2">
+              <p class="text-xs text-gray-500">Fecha y hora</p>
+              <p class="font-bold text-gray-900">{{ getConfirmedWhenLabel() }}</p>
+            </div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div class="rounded-lg bg-white p-4">
+              <p class="text-xs text-gray-500">Total</p>
+              <p class="text-lg font-bold text-gray-900">{{ formatCurrency(getPaymentAmount()) }}</p>
+            </div>
+            <div class="rounded-lg bg-white p-4">
+              <p class="text-xs text-gray-500">Pagado</p>
+              <p class="text-lg font-bold text-emerald-700">{{ formatCurrency(getPaidAmount()) }}</p>
+            </div>
+            <div class="rounded-lg bg-white p-4">
+              <p class="text-xs text-gray-500">Pendiente</p>
+              <p class="text-lg font-bold text-amber-800">{{ formatCurrency(getRemainingAmount()) }}</p>
+            </div>
+          </div>
+
+          <p class="mt-3 text-xs text-gray-600">
+            Vencimiento de pago: {{ getPaymentExpiresAtLabel() }}.
           </p>
-          <a
-            [href]="getWhatsappPaymentLink()"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="mt-4 inline-flex rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700"
+
+          <div class="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p class="font-bold">Recordatorio antes de pagar</p>
+            <p class="mt-1">
+              La reserva necesita recibir al menos un pago parcial dentro de la primera hora desde
+              su creacion. Si no se registra ningun pago, se cancelara automaticamente.
+            </p>
+          </div>
+
+          <p
+            *ngIf="requiresAdminReview()"
+            class="mt-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900"
           >
-            Enviar comprobante por WhatsApp
-          </a>
+            Hay un pago parcial en revision administrativa.
+          </p>
+
+          <div *ngIf="canPayReservation()" class="mt-5 space-y-4">
+            <button
+              type="button"
+              (click)="payRemainingAmount()"
+              [disabled]="isCreatingPaymentLink('total')"
+              class="w-full rounded-lg bg-sky-600 px-4 py-3 text-sm font-bold text-white transition hover:bg-sky-700 disabled:bg-sky-300"
+            >
+              {{ isCreatingPaymentLink('total') ? 'Creando link...' : 'Pagar total pendiente' }}
+            </button>
+
+            <div class="rounded-lg border border-gray-200 bg-white p-4">
+              <h4 class="font-bold text-gray-800">Pagar por jugador</h4>
+              <div class="mt-3 space-y-2">
+                <div
+                  *ngFor="let player of confirmedReservation?.players || []"
+                  class="flex flex-wrap items-center justify-between gap-3 rounded-lg bg-gray-50 p-3"
+                >
+                  <div>
+                    <p class="font-semibold text-gray-800">{{ getPlayerFullName(player) }}</p>
+                    <p class="text-xs text-gray-600">
+                      {{ player.is_member ? 'Socio' : 'No socio' }} -
+                      {{ formatCurrency(getPlayerPrice(player)) }}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    (click)="payPlayerShare(player)"
+                    [disabled]="isPlayerPaid(player) || isCreatingPaymentLink('player-' + player.id)"
+                    class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:bg-gray-300 disabled:text-gray-600"
+                  >
+                    {{
+                      isPlayerPaid(player)
+                        ? 'Pagado'
+                        : isCreatingPaymentLink('player-' + player.id)
+                          ? 'Creando...'
+                          : 'Pagar mi parte'
+                    }}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <p *ngIf="!canPayReservation()" class="mt-5 text-sm font-semibold text-gray-700">
+            No hay acciones de pago disponibles para este estado.
+          </p>
         </div>
       </div>
 

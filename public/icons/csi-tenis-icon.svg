@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#b91c1c"/>
+  <circle cx="256" cy="256" r="168" fill="#ffffff"/>
+  <path d="M104 256h304" stroke="#b91c1c" stroke-width="30" stroke-linecap="round"/>
+  <path d="M256 88c-54 44-86 101-86 168s32 124 86 168" fill="none" stroke="#b91c1c" stroke-width="30" stroke-linecap="round"/>
+  <path d="M256 88c54 44 86 101 86 168s-32 124-86 168" fill="none" stroke="#b91c1c" stroke-width="30" stroke-linecap="round"/>
+  <text x="256" y="282" text-anchor="middle" font-family="Arial, sans-serif" font-size="74" font-weight="700" fill="#7f1d1d">CSI</text>
+</svg>

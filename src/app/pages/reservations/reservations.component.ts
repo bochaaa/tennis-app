@@ -7,8 +7,12 @@ import {
   AvailabilityResponse,
   Court,
   CourtAvailability,
+  PaymentStatus,
   Price,
+  ReservationPaymentLinkRequest,
   ReservationRequest,
+  ReservationResponse,
+  Player,
   UnavailableRange,
 } from '../../models';
 import { ApiService } from '../../services/api.service';
@@ -51,14 +55,15 @@ export class ReservationsComponent implements OnInit {
   selectedTime = '';
   confirmedReservationId: number | null = null;
   confirmedTotalPrice: number | null = null;
-  mpPaymentLink = 'https://link.mercadopago.com.ar/turnosdetenis';
-  damianWhatsappPhone = '5492302418200';
+  confirmedReservation: ReservationResponse | null = null;
+  isRefreshingPaymentStatus = false;
+  creatingPaymentLinkKey: string | null = null;
 
   timeSlots: string[] = [];
   dayStartLabel = '08:00';
   dayEndLabel = '22:00';
   private readonly slotStepMinutes = 30;
-  private readonly minAdvanceMinutes = 60;
+  private readonly minAdvanceMinutes = 180;
   private slotMetaMap = new Map<string, SlotMeta>();
   private currencyFormatter = new Intl.NumberFormat('es-AR', {
     style: 'currency',
@@ -275,10 +280,10 @@ export class ReservationsComponent implements OnInit {
     this.apiService.createReservation(reservationData).subscribe({
       next: (response) => {
         this.isLoading = false;
+        const totalAmount = this.getReservationTotalAmount(response);
         this.confirmedReservationId = response.id;
-        this.confirmedTotalPrice = Number.isFinite(Number(response.total_price))
-          ? Number(response.total_price)
-          : this.getEstimatedTotalPrice();
+        this.confirmedReservation = response;
+        this.confirmedTotalPrice = totalAmount ?? this.getEstimatedTotalPrice();
         this.successMessage = '';
         this.currentStep = 'payment';
         this.cdr.detectChanges();
@@ -464,26 +469,229 @@ export class ReservationsComponent implements OnInit {
   }
 
   getPaymentAmount(): number | null {
+    if (this.confirmedReservation) {
+      return this.getReservationTotalAmount(this.confirmedReservation);
+    }
     if (this.confirmedTotalPrice !== null) {
       return this.confirmedTotalPrice;
     }
     return this.getEstimatedTotalPrice();
   }
 
-  getWhatsappPaymentLink(): string {
-    const reservationId = this.confirmedReservationId
-      ? `#${this.confirmedReservationId}`
-      : '(sin ID)';
-    const court = this.selectedCourt?.name || 'Cancha';
+  getConfirmedCourtLabel(): string {
+    if (this.confirmedReservation?.court_name) {
+      return this.confirmedReservation.court_name;
+    }
+
+    if (
+      typeof this.confirmedReservation?.court === 'object' &&
+      this.confirmedReservation.court?.name
+    ) {
+      return this.confirmedReservation.court.name;
+    }
+
+    if (typeof this.confirmedReservation?.court === 'number') {
+      return `Cancha ${this.confirmedReservation.court}`;
+    }
+
+    return this.selectedCourt?.name || 'Cancha sin identificar';
+  }
+
+  getConfirmedWhenLabel(): string {
+    const value = this.confirmedReservation?.start_datetime;
+    if (value) {
+      const date = new Date(value);
+      if (!Number.isNaN(date.getTime())) {
+        return new Intl.DateTimeFormat('es-AR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }).format(date);
+      }
+
+      return value;
+    }
+
     const date = this.reservationForm.get('date')?.value || '';
     const time = this.reservationForm.get('start_time')?.value || '';
-    const amount = this.formatCurrency(this.getPaymentAmount());
+    return `${date} ${time}`.trim() || 'Horario sin informar';
+  }
 
-    const message =
-      `Hola Damian, te envio el comprobante de pago de mi reserva ${reservationId}. ` +
-      `Turno: ${court} ${date} ${time}. Monto: ${amount}.`;
+  getPaidAmount(): number | null {
+    if (!this.confirmedReservation) {
+      return 0;
+    }
+    return this.toNullableNumber(this.confirmedReservation.paid_amount) ?? 0;
+  }
 
-    return `https://wa.me/${this.damianWhatsappPhone}?text=${encodeURIComponent(message)}`;
+  getRemainingAmount(): number | null {
+    if (!this.confirmedReservation) {
+      return this.getPaymentAmount();
+    }
+    return (
+      this.toNullableNumber(this.confirmedReservation.remaining_amount) ?? this.getPaymentAmount()
+    );
+  }
+
+  getPaymentStatus(): PaymentStatus {
+    return this.confirmedReservation?.payment_status || 'pending_payment';
+  }
+
+  getPaymentStatusLabel(status: PaymentStatus | undefined = this.getPaymentStatus()): string {
+    switch (status) {
+      case 'pending_payment':
+        return 'Pago pendiente';
+      case 'partial_payment':
+        return 'Pago parcial';
+      case 'paid':
+        return 'Reserva pagada';
+      case 'expired':
+        return 'Reserva vencida';
+      case 'cancelled':
+        return 'Reserva cancelada';
+      case 'rejected':
+        return 'Pago rechazado';
+      default:
+        return 'Pago pendiente';
+    }
+  }
+
+  getPaymentStatusClasses(): string {
+    switch (this.getPaymentStatus()) {
+      case 'paid':
+        return 'border-emerald-300 bg-emerald-50 text-emerald-900';
+      case 'partial_payment':
+        return 'border-amber-300 bg-amber-50 text-amber-900';
+      case 'expired':
+      case 'cancelled':
+      case 'rejected':
+        return 'border-red-300 bg-red-50 text-red-800';
+      default:
+        return 'border-sky-300 bg-sky-50 text-sky-900';
+    }
+  }
+
+  requiresAdminReview(): boolean {
+    const reservation = this.confirmedReservation as
+      | (ReservationResponse & { requires_admin_review?: boolean })
+      | null;
+    return !!reservation?.requires_admin_review;
+  }
+
+  canPayReservation(): boolean {
+    const status = this.getPaymentStatus();
+    return status === 'pending_payment' || status === 'partial_payment';
+  }
+
+  refreshPaymentStatus(): void {
+    if (!this.confirmedReservationId || this.isRefreshingPaymentStatus) {
+      return;
+    }
+
+    this.isRefreshingPaymentStatus = true;
+    this.errorMessage = '';
+
+    this.apiService.getReservationPaymentStatus(this.confirmedReservationId).subscribe({
+      next: (response) => {
+        this.confirmedReservation = response;
+        this.confirmedTotalPrice = this.getReservationTotalAmount(response);
+        this.isRefreshingPaymentStatus = false;
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        this.isRefreshingPaymentStatus = false;
+        this.errorMessage = this.extractErrorMessage(error, 'No se pudo actualizar el estado de pago.');
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  payRemainingAmount(): void {
+    const amount = this.getRemainingAmount();
+    if (!amount || amount <= 0) {
+      this.errorMessage = 'No hay saldo pendiente para pagar.';
+      return;
+    }
+
+    this.createPaymentLink('total', {
+      amount: this.toBackendAmount(amount),
+      payment_type: 'total',
+    });
+  }
+
+  payPlayerShare(player: Player): void {
+    if (!player.id) {
+      this.errorMessage = 'No se pudo identificar al jugador para generar el pago.';
+      return;
+    }
+
+    const amount = this.toNullableNumber(player.price_applied);
+    if (!amount || amount <= 0) {
+      this.errorMessage = 'No se pudo determinar el monto del jugador.';
+      return;
+    }
+
+    this.createPaymentLink(`player-${player.id}`, {
+      amount: this.toBackendAmount(amount),
+      payment_type: 'player',
+      player_id: player.id,
+    });
+  }
+
+  isCreatingPaymentLink(key: string): boolean {
+    return this.creatingPaymentLinkKey === key;
+  }
+
+  isPlayerPaid(player: Player): boolean {
+    if (!player.id || !this.confirmedReservation?.payment_transactions) {
+      return false;
+    }
+
+    return this.confirmedReservation.payment_transactions.some((transaction) => {
+      if (transaction.status !== 'approved') {
+        return false;
+      }
+
+      if (typeof transaction.player === 'number') {
+        return transaction.player === player.id;
+      }
+
+      if (transaction.player && typeof transaction.player === 'object') {
+        return transaction.player.id === player.id;
+      }
+
+      return false;
+    });
+  }
+
+  getPlayerFullName(player: Player): string {
+    return `${player.first_name || ''} ${player.last_name || ''}`.trim() || 'Jugador';
+  }
+
+  getPlayerPrice(player: Player): number | null {
+    return this.toNullableNumber(player.price_applied);
+  }
+
+  getPaymentExpiresAtLabel(): string {
+    const value = this.confirmedReservation?.payment_expires_at;
+    if (!value) {
+      return 'No informado';
+    }
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+
+    return new Intl.DateTimeFormat('es-AR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(date);
   }
 
   getCurrentStepNumber(): number {
@@ -936,5 +1144,79 @@ export class ReservationsComponent implements OnInit {
       return false;
     }
     return this.selectedDate === this.getLocalDateISO();
+  }
+
+  private createPaymentLink(key: string, payload: ReservationPaymentLinkRequest): void {
+    if (!this.confirmedReservationId || !this.canPayReservation()) {
+      return;
+    }
+
+    this.creatingPaymentLinkKey = key;
+    this.errorMessage = '';
+
+    this.apiService.createReservationPaymentLink(this.confirmedReservationId, payload).subscribe({
+      next: (response) => {
+        window.location.href = response.payment_url;
+      },
+      error: (error) => {
+        this.creatingPaymentLinkKey = null;
+        this.errorMessage = this.extractErrorMessage(error, 'No se pudo crear el link de pago.');
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  private getReservationTotalAmount(reservation: ReservationResponse): number | null {
+    return (
+      this.toNullableNumber(reservation.total_amount) ??
+      this.toNullableNumber(reservation.total_price)
+    );
+  }
+
+  private toNullableNumber(value: number | string | null | undefined): number | null {
+    if (value === null || typeof value === 'undefined') {
+      return null;
+    }
+
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : null;
+  }
+
+  private toBackendAmount(value: number): string {
+    return value.toFixed(2);
+  }
+
+  private extractErrorMessage(error: unknown, fallback: string): string {
+    const errorValue = error as { error?: unknown };
+    const payload = errorValue?.error;
+    if (!payload) {
+      return fallback;
+    }
+
+    if (typeof payload === 'string') {
+      return payload;
+    }
+
+    if (typeof payload === 'object') {
+      const objectPayload = payload as Record<string, unknown>;
+      const detail = objectPayload['detail'];
+      if (typeof detail === 'string' && detail.trim().length > 0) {
+        return detail;
+      }
+
+      const firstKey = Object.keys(objectPayload)[0];
+      if (!firstKey) {
+        return fallback;
+      }
+
+      const firstValue = objectPayload[firstKey];
+      if (Array.isArray(firstValue) && firstValue.length > 0) {
+        return `${firstKey}: ${String(firstValue[0])}`;
+      }
+
+      return `${firstKey}: ${String(firstValue)}`;
+    }
+
+    return fallback;
   }
 }

@@ -24,6 +24,8 @@ export class AdminReservationPaymentsComponent implements OnInit {
   successMessage = '';
 
   selectedDate = this.getTodayDate();
+  selectedReportDate = this.getTodayDate();
+  isExportingMonthlyReport = false;
   paymentFilter: PaymentFilter = 'ALL';
   readonly paymentFilters: PaymentFilter[] = ['UNPAID', 'PAID', 'ALL'];
 
@@ -45,6 +47,27 @@ export class AdminReservationPaymentsComponent implements OnInit {
     const input = event.target as HTMLInputElement | null;
     this.selectedDate = String(input?.value || '').trim();
     this.loadReservations();
+  }
+
+  onReportDateChanged(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    this.selectedReportDate = String(input?.value || '').trim();
+  }
+
+  openDatePicker(event: Event): void {
+    const input = event.target as HTMLInputElement | null;
+    if (!input || input.type !== 'date') {
+      return;
+    }
+
+    const pickerInput = input as HTMLInputElement & { showPicker?: () => void };
+    if (typeof pickerInput.showPicker === 'function') {
+      try {
+        pickerInput.showPicker();
+      } catch {
+        // Fallback al selector nativo cuando el navegador no permite showPicker.
+      }
+    }
   }
 
   setPaymentFilter(filter: PaymentFilter): void {
@@ -101,6 +124,39 @@ export class AdminReservationPaymentsComponent implements OnInit {
         this.cdr.detectChanges();
       },
     });
+  }
+
+  exportMonthlyMercadoPagoReport(): void {
+    const monthRange = this.getMonthRangeFromDate(this.selectedReportDate);
+    if (!monthRange) {
+      this.errorMessage = 'Selecciona una fecha valida para exportar el mes.';
+      return;
+    }
+
+    this.isExportingMonthlyReport = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.apiService
+      .exportMercadoPagoReportCsv(monthRange.startDate, monthRange.endDate)
+      .subscribe({
+        next: (blob) => {
+          this.isExportingMonthlyReport = false;
+          this.downloadBlob(blob, `rentas-mercadopago-${monthRange.monthValue}.csv`);
+          this.successMessage = `Resumen mensual exportado para ${this.getMonthLabel(
+            monthRange.monthValue,
+          )}.`;
+          this.cdr.detectChanges();
+        },
+        error: (error) => {
+          this.isExportingMonthlyReport = false;
+          this.errorMessage = this.extractErrorMessage(
+            error,
+            'No se pudo exportar el resumen mensual para Rentas.',
+          );
+          this.cdr.detectChanges();
+        },
+      });
   }
 
   confirmPayment(reservation: ReservationAdminItem): void {
@@ -425,12 +481,61 @@ export class AdminReservationPaymentsComponent implements OnInit {
     }).format(Number.isFinite(numericValue) ? numericValue : 0);
   }
 
+  private getMonthRangeFromDate(
+    dateValue: string,
+  ): { startDate: string; endDate: string; monthValue: string } | null {
+    const match = dateValue.match(/^(\d{4})-(\d{2})-\d{2}$/);
+    if (!match) {
+      return null;
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    if (!Number.isInteger(year) || !Number.isInteger(month) || month < 1 || month > 12) {
+      return null;
+    }
+
+    const lastDay = new Date(year, month, 0).getDate();
+    const monthValue = `${year}-${this.pad2(month)}`;
+    return {
+      startDate: `${year}-${this.pad2(month)}-01`,
+      endDate: `${year}-${this.pad2(month)}-${this.pad2(lastDay)}`,
+      monthValue,
+    };
+  }
+
+  private downloadBlob(blob: Blob, filename: string): void {
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+  }
+
+  private getMonthLabel(monthValue: string): string {
+    const match = monthValue.match(/^(\d{4})-(\d{2})$/);
+    if (!match) {
+      return monthValue || 'el mes seleccionado';
+    }
+
+    const date = new Date(`${match[1]}-${match[2]}-01T00:00:00`);
+    return new Intl.DateTimeFormat('es-AR', {
+      month: 'long',
+      year: 'numeric',
+    }).format(date);
+  }
+
   private getTodayDate(): string {
     const now = new Date();
     const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const day = String(now.getDate()).padStart(2, '0');
+    const month = this.pad2(now.getMonth() + 1);
+    const day = this.pad2(now.getDate());
     return `${year}-${month}-${day}`;
+  }
+
+  private pad2(value: number): string {
+    return String(value).padStart(2, '0');
   }
 
   private extractErrorMessage(error: unknown, fallback: string): string {

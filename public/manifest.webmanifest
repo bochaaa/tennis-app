@@ -1,0 +1,19 @@
+{
+  "name": "CSI Tenis",
+  "short_name": "CSI Tenis",
+  "description": "Reservas y administracion de turnos de tenis.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#7f1d1d",
+  "theme_color": "#b91c1c",
+  "icons": [
+    {
+      "src": "icons/csi-tenis-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

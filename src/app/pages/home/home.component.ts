@@ -31,6 +31,10 @@ export class HomeComponent {
     this.router.navigate(['/reservations']);
   }
 
+  payReservationAsGuest(): void {
+    this.router.navigate(['/reservations/payments']);
+  }
+
   goToAdminPanel(): void {
     this.router.navigate(['/admin/dashboard']);
   }

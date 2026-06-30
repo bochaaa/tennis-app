@@ -21,6 +21,59 @@
   </nav>
 
   <div class="mx-auto max-w-7xl px-4 py-4 sm:py-8">
+    <section
+      class="mb-6 grid gap-4 rounded-lg border border-white/20 bg-white/10 p-4 shadow-xl shadow-black/10 md:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] md:p-5"
+    >
+      <div>
+        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-bold">Notificaciones</h2>
+            <p class="text-sm text-red-100">
+              {{ getNotificationStatusLabel(notificationStatus$ | async) }}
+            </p>
+          </div>
+          <div class="flex gap-2">
+            <button
+              type="button"
+              (click)="enableNotifications()"
+              [disabled]="isEnablingNotifications || (notificationStatus$ | async) === 'denied'"
+              class="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {{ isEnablingNotifications ? 'Activando...' : 'Activar notificaciones' }}
+            </button>
+            <button
+              type="button"
+              (click)="clearNotifications()"
+              class="rounded-lg border border-white/30 px-3 py-2 text-sm font-semibold hover:bg-white/10"
+            >
+              Limpiar
+            </button>
+          </div>
+        </div>
+        <p class="max-w-2xl text-sm leading-6 text-red-50">
+          Este panel registra el navegador del administrador para recibir notificaciones de Firebase
+          Cloud Messaging cuando el backend envie el aviso de una nueva reserva.
+        </p>
+      </div>
+
+      <div class="max-h-56 overflow-y-auto rounded-lg border border-white/15 bg-black/15">
+        <ng-container *ngIf="notifications$ | async as notifications">
+          <div *ngIf="notifications.length === 0" class="p-4 text-sm text-red-100">
+            Todavia no hay notificaciones.
+          </div>
+
+          <div
+            *ngFor="let notification of notifications"
+            class="border-b border-white/10 p-4 last:border-b-0"
+          >
+            <p class="font-semibold">{{ notification.title }}</p>
+            <p class="mt-1 text-sm text-red-50">{{ notification.body }}</p>
+            <p class="mt-2 text-xs text-red-100">{{ notification.receivedAt | date: 'short' }}</p>
+          </div>
+        </ng-container>
+      </div>
+    </section>
+
     <div class="mb-6 rounded-lg border border-white/20 bg-white/10 p-4 md:hidden">
       <h2 class="mb-3 text-sm font-bold uppercase tracking-[0.12em] text-red-100">Accesos Rapidos</h2>
       <div class="grid grid-cols-2 gap-2">

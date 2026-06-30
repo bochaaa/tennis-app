@@ -20,10 +20,72 @@ export interface CourtWriteRequest {
 }
 
 export interface Player {
+  id?: number;
   first_name: string;
   last_name: string;
   is_member: boolean;
-  price_applied?: number;
+  price_applied?: number | string;
+}
+
+export type PaymentStatus =
+  | 'pending_payment'
+  | 'partial_payment'
+  | 'paid'
+  | 'expired'
+  | 'cancelled'
+  | 'rejected';
+
+export type PaymentType = 'total' | 'player' | 'partial';
+
+export type PaymentTransactionStatus =
+  | 'pending'
+  | 'approved'
+  | 'in_process'
+  | 'rejected'
+  | 'cancelled'
+  | 'refunded'
+  | 'amount_mismatch';
+
+export interface PaymentTransaction {
+  id?: number;
+  player?: number | Player | null;
+  player_name?: string | null;
+  payment_type: PaymentType | string;
+  status: PaymentTransactionStatus | string;
+  base_amount?: number | string | null;
+  mp_amount?: number | string | null;
+  amount_received?: number | string | null;
+  paid_at?: string | null;
+  payment_id?: string | number | null;
+  external_reference?: string | null;
+}
+
+export interface ReservationPaymentLinkRequest {
+  amount: string;
+  payment_type: PaymentType;
+  player_id?: number;
+}
+
+export interface ReservationCashPaymentRequest {
+  confirmation_password: string;
+  amount?: string;
+  payment_type?: PaymentType;
+  player_id?: number;
+  notes?: string;
+}
+
+export interface ReservationPaymentLinkResponse {
+  reservation_id: number;
+  payment_transaction_id: number;
+  payment_url: string;
+  preference_id: string;
+  amount: string;
+  mp_amount: string;
+  identification_decimal: string;
+  reservation_total_amount: string;
+  reservation_paid_amount: string;
+  reservation_remaining_amount: string;
+  expires_at: string;
 }
 
 export interface ReservationRequest {
@@ -41,11 +103,22 @@ export interface ReservationResponse {
   id: number;
   reservation_type: 'NORMAL' | 'CLASS';
   game_mode: 'SINGLES' | 'DOUBLES';
+  court?: number | Court;
+  court_name?: string;
+  contact_name?: string;
+  contact_phone?: string;
   start_datetime: string;
   end_datetime: string;
   status: 'CONFIRMED' | 'CANCELLED' | 'CANCELLATION_REQUESTED';
   total_price: number;
+  total_amount?: number | string;
+  paid_amount?: number | string;
+  remaining_amount?: number | string;
+  payment_status?: PaymentStatus;
+  payment_expires_at?: string | null;
+  requires_admin_review?: boolean;
   players: Player[];
+  payment_transactions?: PaymentTransaction[];
   is_paid?: boolean;
   paid_at?: string | null;
   paid_confirmed_by?:
@@ -71,6 +144,10 @@ export interface ReservationAdminItem extends ReservationResponse {
 
 export interface ReservationPaymentUpdateRequest {
   is_paid: boolean;
+}
+
+export interface ReservationPaymentSearchResult extends ReservationResponse {
+  matching_players?: Player[];
 }
 
 export interface AvailabilityRange {

@@ -52,33 +52,44 @@
       </button>
     </div>
 
-    <div class="mt-12 grid gap-8 md:grid-cols-2">
-      <div class="rounded-xl border border-white/20 bg-white/10 p-8 backdrop-blur">
+    <div class="mt-12 grid items-stretch gap-8 md:grid-cols-3">
+      <div class="flex min-h-[252px] flex-col rounded-xl border border-white/20 bg-white/10 p-8 backdrop-blur">
         <h3 class="mb-3 text-3xl font-bold">Soy Administrador</h3>
-        <p class="mb-6 text-red-100">Gestion de canchas, precios, horarios y reservas.</p>
+        <p class="text-red-100">Gestion de canchas, precios, horarios y reservas.</p>
         <button
           *ngIf="!(isAdmin$ | async)"
           (click)="loginAsAdmin()"
-          class="w-full rounded-lg bg-white px-6 py-3 font-bold text-red-700 border-2 hover:bg-red-100 hover:border-white cursor-pointer"
+          class="mt-auto w-full rounded-lg bg-white px-6 py-3 font-bold text-red-700 border-2 hover:bg-red-100 hover:border-white cursor-pointer"
         >
           Iniciar sesion
         </button>
         <div
           *ngIf="isAdmin$ | async"
-          class="rounded-lg border border-emerald-300/60 bg-emerald-900/40 px-4 py-3 text-center text-sm"
+          class="mt-auto rounded-lg border border-emerald-300/60 bg-emerald-900/40 px-4 py-3 text-center text-sm"
         >
           Ya estas logueado como administrador.
         </div>
       </div>
 
-      <div class="rounded-xl border border-white/20 bg-white/10 p-8 backdrop-blur">
+      <div class="flex min-h-[252px] flex-col rounded-xl border border-white/20 bg-white/10 p-8 backdrop-blur">
         <h3 class="mb-3 text-3xl font-bold">Soy Invitado</h3>
-        <p class="mb-6 text-red-100">Reserva una cancha sin registrarte.</p>
+        <p class="text-red-100">Reserva una cancha sin registrarte.</p>
         <button
           (click)="bookAsGuest()"
-          class="w-full rounded-lg bg-white px-6 py-3 font-bold text-red-700 border-2 hover:bg-red-100 hover:border-white cursor-pointer"
+          class="mt-auto w-full rounded-lg bg-white px-6 py-3 font-bold text-red-700 border-2 hover:bg-red-100 hover:border-white cursor-pointer"
         >
           Hacer una reserva
+        </button>
+      </div>
+
+      <div class="flex min-h-[252px] flex-col rounded-xl border border-white/20 bg-white/10 p-8 backdrop-blur">
+        <h3 class="mb-3 text-3xl font-bold">Pagar Reserva</h3>
+        <p class="text-red-100">Busca un turno pendiente por nombre de jugador.</p>
+        <button
+          (click)="payReservationAsGuest()"
+          class="mt-auto w-full rounded-lg bg-white px-6 py-3 font-bold text-red-700 border-2 hover:bg-red-100 hover:border-white cursor-pointer"
+        >
+          Buscar reserva
         </button>
       </div>
     </div>
