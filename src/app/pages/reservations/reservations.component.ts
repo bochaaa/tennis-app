@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, NgZone, OnInit } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { StepProgressComponent } from '../../components/step-progress/step-progress.component';
@@ -8,11 +8,11 @@ import {
   Court,
   CourtAvailability,
   PaymentStatus,
+  Player,
   Price,
   ReservationPaymentLinkRequest,
   ReservationRequest,
   ReservationResponse,
-  Player,
   UnavailableRange,
 } from '../../models';
 import { ApiService } from '../../services/api.service';
@@ -52,6 +52,7 @@ export class ReservationsComponent implements OnInit {
   selectedDate = '';
   minSelectableDate = '';
   selectedCourt: Court | null = null;
+  selectedMobileCourtId: number | null = null;
   selectedTime = '';
   confirmedReservationId: number | null = null;
   confirmedTotalPrice: number | null = null;
@@ -76,6 +77,7 @@ export class ReservationsComponent implements OnInit {
     private formBuilder: FormBuilder,
     private apiService: ApiService,
     private router: Router,
+    private ngZone: NgZone,
     private cdr: ChangeDetectorRef,
   ) {}
 
@@ -139,37 +141,41 @@ export class ReservationsComponent implements OnInit {
   loadAvailability(date: string): void {
     this.isLoadingAvailability = true;
     this.errorMessage = '';
+    this.cdr.markForCheck();
 
     this.apiService.getAvailability(date).subscribe({
       next: (availability) => {
-        try {
-          const safeCourts = Array.isArray(availability?.courts) ? availability.courts : [];
-          this.availability = {
-            ...availability,
-            courts: safeCourts,
-          };
-          this.availabilityCourts = safeCourts;
-          this.buildAvailabilityGrid();
-        } catch (error) {
-          console.error('Error procesando disponibilidad:', error);
+        this.ngZone.run(() => {
+          try {
+            const safeCourts = Array.isArray(availability?.courts) ? availability.courts : [];
+            this.availability = {
+              ...availability,
+              courts: safeCourts,
+            };
+            this.availabilityCourts = safeCourts;
+            this.buildAvailabilityGrid();
+            this.syncSelectedMobileCourt();
+          } catch (error) {
+            console.error('Error procesando disponibilidad:', error);
+            this.availability = null;
+            this.availabilityCourts = [];
+            this.timeSlots = [];
+            this.slotMetaMap.clear();
+            this.errorMessage = 'La disponibilidad llego con un formato inesperado.';
+          } finally {
+            this.finishAvailabilityLoading();
+          }
+        });
+      },
+      error: () => {
+        this.ngZone.run(() => {
           this.availability = null;
           this.availabilityCourts = [];
           this.timeSlots = [];
           this.slotMetaMap.clear();
-          this.errorMessage = 'La disponibilidad llego con un formato inesperado.';
-        } finally {
-          this.isLoadingAvailability = false;
-          this.cdr.detectChanges();
-        }
-      },
-      error: () => {
-        this.availability = null;
-        this.availabilityCourts = [];
-        this.timeSlots = [];
-        this.slotMetaMap.clear();
-        this.isLoadingAvailability = false;
-        this.errorMessage = 'Error al cargar disponibilidad.';
-        this.cdr.detectChanges();
+          this.errorMessage = 'Error al cargar disponibilidad.';
+          this.finishAvailabilityLoading();
+        });
       },
     });
   }
@@ -327,6 +333,7 @@ export class ReservationsComponent implements OnInit {
       name: court.name,
       is_active: true,
     };
+    this.selectedMobileCourtId = court.id;
     this.selectedTime = time;
 
     this.reservationForm.patchValue({
@@ -341,6 +348,43 @@ export class ReservationsComponent implements OnInit {
     return this.getSlotMeta(courtId, time).selectable;
   }
 
+  selectMobileCourt(court: CourtAvailability): void {
+    this.selectedMobileCourtId = court.id;
+  }
+
+  onMobileCourtChanged(event: Event): void {
+    const input = event.target as HTMLSelectElement | null;
+    const courtId = Number(input?.value);
+
+    if (Number.isFinite(courtId)) {
+      this.selectedMobileCourtId = courtId;
+    }
+  }
+
+  getSelectedMobileCourt(): CourtAvailability | null {
+    if (this.availabilityCourts.length === 0) {
+      return null;
+    }
+
+    const selectedCourt = this.availabilityCourts.find(
+      (court) => court.id === this.selectedMobileCourtId,
+    );
+
+    return selectedCourt || this.availabilityCourts[0];
+  }
+
+  isMobileCourtSelected(court: CourtAvailability): boolean {
+    return this.getSelectedMobileCourt()?.id === court.id;
+  }
+
+  hasSelectableSlots(court: CourtAvailability | null): boolean {
+    if (!court) {
+      return false;
+    }
+
+    return this.timeSlots.some((slot) => this.isSlotSelectable(court.id, slot));
+  }
+
   isSlotSelected(courtId: number, time: string): boolean {
     return (
       this.reservationForm.get('court')?.value === courtId &&
@@ -348,9 +392,30 @@ export class ReservationsComponent implements OnInit {
     );
   }
 
+  isSlotInSelectedRange(courtId: number, time: string): boolean {
+    const selectedCourtId = this.reservationForm.get('court')?.value;
+    const selectedStartTime = this.reservationForm.get('start_time')?.value;
+    if (selectedCourtId !== courtId || !selectedStartTime || this.isSlotSelected(courtId, time)) {
+      return false;
+    }
+
+    const selectedStartMin = this.timeToMinutes(selectedStartTime);
+    const slotMin = this.timeToMinutes(time);
+    if (selectedStartMin === null || slotMin === null) {
+      return false;
+    }
+
+    const selectedEndMin = selectedStartMin + this.getReservationDurationMinutes();
+    return slotMin > selectedStartMin && slotMin < selectedEndMin;
+  }
+
   getSlotLabel(courtId: number, time: string): string {
     if (this.isSlotSelected(courtId, time)) {
-      return 'Seleccionado';
+      return 'Inicio reserva';
+    }
+
+    if (this.isSlotInSelectedRange(courtId, time)) {
+      return 'Tu reserva';
     }
 
     const meta = this.getSlotMeta(courtId, time);
@@ -399,9 +464,43 @@ export class ReservationsComponent implements OnInit {
     return '';
   }
 
+  getMobileSlotLabel(courtId: number, time: string): string {
+    if (this.isSlotSelected(courtId, time)) {
+      return 'Inicio';
+    }
+
+    if (this.isSlotInSelectedRange(courtId, time)) {
+      return 'Tu reserva';
+    }
+
+    const meta = this.getSlotMeta(courtId, time);
+
+    if (meta.status === 'available' && meta.selectable) {
+      return 'Libre';
+    }
+
+    if (meta.status === 'available') {
+      return meta.reason === 'INSUFFICIENT_LEAD_TIME' ? 'No disp.' : 'Sin 90min';
+    }
+
+    if (meta.status === 'occupied') {
+      if (meta.reservationType === 'CLASS') {
+        return 'Clase';
+      }
+
+      return 'Ocupado';
+    }
+
+    return 'Cerrado';
+  }
+
   getSlotClasses(courtId: number, time: string): string {
     if (this.isSlotSelected(courtId, time)) {
       return 'border-red-700 bg-red-700 text-white shadow-sm';
+    }
+
+    if (this.isSlotInSelectedRange(courtId, time)) {
+      return 'border-red-300 bg-red-100 text-red-800 shadow-inner hover:bg-red-100';
     }
 
     const meta = this.getSlotMeta(courtId, time);
@@ -466,6 +565,17 @@ export class ReservationsComponent implements OnInit {
       return 'No disponible';
     }
     return this.currencyFormatter.format(value);
+  }
+
+  getSelectedTimeRangeLabel(): string {
+    const selectedStartTime = this.reservationForm.get('start_time')?.value || this.selectedTime;
+    const selectedStartMin = this.timeToMinutes(selectedStartTime);
+    if (selectedStartMin === null) {
+      return 'Horario sin seleccionar';
+    }
+
+    const selectedEndMin = selectedStartMin + this.getReservationDurationMinutes();
+    return `${this.minutesToHour(selectedStartMin)} - ${this.minutesToHour(selectedEndMin)}`;
   }
 
   getPaymentAmount(): number | null {
@@ -602,7 +712,10 @@ export class ReservationsComponent implements OnInit {
       },
       error: (error) => {
         this.isRefreshingPaymentStatus = false;
-        this.errorMessage = this.extractErrorMessage(error, 'No se pudo actualizar el estado de pago.');
+        this.errorMessage = this.extractErrorMessage(
+          error,
+          'No se pudo actualizar el estado de pago.',
+        );
         this.cdr.detectChanges();
       },
     });
@@ -840,7 +953,7 @@ export class ReservationsComponent implements OnInit {
         reason = 'INSUFFICIENT_DURATION';
       }
     } else {
-      const duration = this.availability?.reservation_duration_minutes || 90;
+      const duration = this.getReservationDurationMinutes();
       const rangeEndMin = this.timeToMinutes(availableRange.end_time);
       selectable =
         availableRange.can_book_90_min && rangeEndMin !== null && slotMin + duration <= rangeEndMin;
@@ -885,6 +998,27 @@ export class ReservationsComponent implements OnInit {
       court: '',
       start_time: '',
     });
+  }
+
+  private syncSelectedMobileCourt(): void {
+    if (this.availabilityCourts.length === 0) {
+      this.selectedMobileCourtId = null;
+      return;
+    }
+
+    const currentCourtExists = this.availabilityCourts.some(
+      (court) => court.id === this.selectedMobileCourtId,
+    );
+
+    if (!currentCourtExists) {
+      this.selectedMobileCourtId = this.availabilityCourts[0].id;
+    }
+  }
+
+  private finishAvailabilityLoading(): void {
+    this.isLoadingAvailability = false;
+    this.cdr.markForCheck();
+    window.setTimeout(() => this.cdr.detectChanges(), 0);
   }
 
   private getReasonLabel(reason: string | null): string {
@@ -1097,6 +1231,11 @@ export class ReservationsComponent implements OnInit {
       return false;
     }
     return slotMin >= startMin && slotMin < endMin;
+  }
+
+  private getReservationDurationMinutes(): number {
+    const duration = Number(this.availability?.reservation_duration_minutes);
+    return Number.isFinite(duration) && duration > 0 ? duration : 90;
   }
 
   private timeToMinutes(time: string | null | undefined): number | null {

@@ -148,6 +148,13 @@ export class ApiService {
     );
   }
 
+  cancelReservation(reservationId: number): Observable<ReservationAdminItem> {
+    return this.http.patch<ReservationAdminItem>(
+      `${this.apiUrl}/reservations/${reservationId}/cancel/`,
+      {},
+    );
+  }
+
   exportMercadoPagoReportCsv(startDate: string, endDate: string): Observable<Blob> {
     const params = new HttpParams().set('start_date', startDate).set('end_date', endDate);
     return this.http.get(`${this.apiUrl}/payments/reports/mercadopago.csv/`, {

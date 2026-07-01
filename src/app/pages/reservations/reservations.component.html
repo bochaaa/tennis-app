@@ -69,7 +69,11 @@
             >
             <span class="inline-flex items-center gap-2"
               ><span class="h-3 w-3 rounded border border-red-700 bg-red-700"></span>
-              Seleccionado</span
+              Inicio seleccionado</span
+            >
+            <span class="inline-flex items-center gap-2"
+              ><span class="h-3 w-3 rounded border border-red-300 bg-red-100"></span>
+              Rango de tu reserva</span
             >
           </div>
 
@@ -93,7 +97,7 @@
 
           <div
             *ngIf="!isLoadingAvailability && availabilityCourts.length > 0"
-            class="overflow-x-auto rounded-lg border border-gray-200 bg-white"
+            class="hidden overflow-x-auto rounded-lg border border-gray-200 bg-white md:block"
           >
             <table class="min-w-full border-collapse text-xs">
               <thead>
@@ -133,12 +137,69 @@
           </div>
 
           <div
+            *ngIf="!isLoadingAvailability && availabilityCourts.length > 0"
+            class="space-y-4 md:hidden"
+          >
+            <div>
+              <label class="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Cancha
+              </label>
+              <select
+                [value]="getSelectedMobileCourt()?.id"
+                (change)="onMobileCourtChanged($event)"
+                class="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-900 outline-none focus:border-red-500"
+              >
+                <option *ngFor="let court of availabilityCourts" [value]="court.id">
+                  {{ court.name }}
+                </option>
+              </select>
+            </div>
+
+            <ng-container *ngIf="getSelectedMobileCourt() as mobileCourt">
+              <div class="rounded-lg border border-gray-200 bg-white p-3">
+                <div class="mb-3 flex items-center justify-between gap-2">
+                  <div>
+                    <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                      Cancha seleccionada
+                    </p>
+                    <p class="font-bold text-gray-900">{{ mobileCourt.name }}</p>
+                  </div>
+                  <p class="text-xs text-gray-500">{{ dayStartLabel }} - {{ dayEndLabel }}</p>
+                </div>
+
+                <div class="grid grid-cols-3 gap-1.5">
+                  <button
+                    *ngFor="let slot of timeSlots"
+                    type="button"
+                    (click)="selectSlot(mobileCourt, slot)"
+                    [disabled]="!isSlotSelectable(mobileCourt.id, slot)"
+                    class="min-h-[52px] rounded border px-1 py-2 text-center text-xs font-bold leading-tight transition"
+                    [ngClass]="getSlotClasses(mobileCourt.id, slot)"
+                  >
+                    <span class="block">{{ slot }}</span>
+                    <span class="block whitespace-nowrap text-[10px] font-semibold">
+                      {{ getMobileSlotLabel(mobileCourt.id, slot) }}
+                    </span>
+                  </button>
+                </div>
+
+                <p
+                  *ngIf="!hasSelectableSlots(mobileCourt)"
+                  class="mt-3 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600"
+                >
+                  No hay horarios disponibles para esta cancha.
+                </p>
+              </div>
+            </ng-container>
+          </div>
+
+          <div
             *ngIf="selectedCourt && selectedTime"
             class="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
           >
             Seleccion actual: <strong>{{ selectedCourt.name }}</strong> a las
             <strong>{{ selectedTime }}</strong
-            >.
+            >. Ocupa <strong>{{ getSelectedTimeRangeLabel() }}</strong>.
           </div>
         </div>
 
@@ -290,8 +351,8 @@
             <p class="font-bold text-gray-800">{{ reservationForm.get('date')?.value }}</p>
           </div>
           <div class="rounded-lg bg-gray-50 p-4">
-            <p class="text-xs text-gray-600">Hora</p>
-            <p class="font-bold text-gray-800">{{ reservationForm.get('start_time')?.value }}</p>
+            <p class="text-xs text-gray-600">Horario</p>
+            <p class="font-bold text-gray-800">{{ getSelectedTimeRangeLabel() }}</p>
           </div>
           <div class="rounded-lg bg-gray-50 p-4">
             <p class="text-xs text-gray-600">Tipo de juego</p>

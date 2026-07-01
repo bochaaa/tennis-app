@@ -91,6 +91,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'notifications',
+        loadComponent: () =>
+          import('./pages/admin-notifications/admin-notifications.component').then(
+            (m) => m.AdminNotificationsComponent,
+          ),
+      },
+      {
         path: '',
         redirectTo: 'dashboard',
         pathMatch: 'full',

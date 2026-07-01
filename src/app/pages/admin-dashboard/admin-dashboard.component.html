@@ -6,71 +6,94 @@
         <h1 class="text-xl font-bold sm:text-2xl">Panel Admin CSI Tenis</h1>
       </div>
       <div class="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end sm:space-x-4">
-        <div class="text-right">
+        <div class="min-w-0 text-left sm:text-right">
           <p class="text-sm text-red-100">Administrador</p>
-          <p class="font-bold">{{ (currentAdmin$ | async) || 'Admin' }}</p>
+          <p class="truncate font-bold">{{ (currentAdmin$ | async) || 'Admin' }}</p>
         </div>
-        <button
-          (click)="logout()"
-          class="shrink-0 rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10"
-        >
-          Cerrar sesion
-        </button>
+        <div class="flex shrink-0 items-center gap-3">
+          <button
+            type="button"
+            (click)="goToNotifications()"
+            class="relative grid h-10 w-10 place-items-center text-white hover:opacity-75"
+            title="Ver notificaciones"
+            aria-label="Ver notificaciones"
+          >
+            <svg
+              aria-hidden="true"
+              class="h-6 w-6"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            <ng-container *ngIf="unreadNotifications$ | async as unreadNotifications">
+              <span
+                *ngIf="unreadNotifications > 0"
+                class="absolute right-0 top-0 grid min-h-5 min-w-5 place-items-center rounded-full bg-white px-1 text-xs font-bold text-red-700"
+              >
+                {{ unreadNotifications > 9 ? '9+' : unreadNotifications }}
+              </span>
+            </ng-container>
+          </button>
+          <button
+            (click)="logout()"
+            class="shrink-0 rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10"
+          >
+            Cerrar sesion
+          </button>
+        </div>
       </div>
     </div>
   </nav>
 
   <div class="mx-auto max-w-7xl px-4 py-4 sm:py-8">
     <section
-      class="mb-6 grid gap-4 rounded-lg border border-white/20 bg-white/10 p-4 shadow-xl shadow-black/10 md:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] md:p-5"
+      class="mb-6 rounded-lg border border-white/20 bg-white/10 p-4 shadow-xl shadow-black/10 md:p-5"
     >
-      <div>
-        <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h2 class="text-lg font-bold">Notificaciones</h2>
-            <p class="text-sm text-red-100">
-              {{ getNotificationStatusLabel(notificationStatus$ | async) }}
-            </p>
-          </div>
-          <div class="flex gap-2">
-            <button
-              type="button"
-              (click)="enableNotifications()"
-              [disabled]="isEnablingNotifications || (notificationStatus$ | async) === 'denied'"
-              class="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {{ isEnablingNotifications ? 'Activando...' : 'Activar notificaciones' }}
-            </button>
-            <button
-              type="button"
-              (click)="clearNotifications()"
-              class="rounded-lg border border-white/30 px-3 py-2 text-sm font-semibold hover:bg-white/10"
-            >
-              Limpiar
-            </button>
-          </div>
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <h2 class="text-lg font-bold">Notificaciones</h2>
+          <p class="text-sm text-red-100">
+            {{ getNotificationStatusLabel(notificationStatus$ | async) }}
+          </p>
+          <p class="mt-2 max-w-2xl text-sm leading-6 text-red-50">
+            {{
+              (notificationStatus$ | async) === 'registered'
+                ? 'Listo, te van a llegar avisos cuando entre una nueva reserva.'
+                : 'Activa los avisos para enterarte cuando entre una nueva reserva.'
+            }}
+          </p>
         </div>
-        <p class="max-w-2xl text-sm leading-6 text-red-50">
-          Este panel registra el navegador del administrador para recibir notificaciones de Firebase
-          Cloud Messaging cuando el backend envie el aviso de una nueva reserva.
-        </p>
-      </div>
-
-      <div class="max-h-56 overflow-y-auto rounded-lg border border-white/15 bg-black/15">
-        <ng-container *ngIf="notifications$ | async as notifications">
-          <div *ngIf="notifications.length === 0" class="p-4 text-sm text-red-100">
-            Todavia no hay notificaciones.
-          </div>
-
-          <div
-            *ngFor="let notification of notifications"
-            class="border-b border-white/10 p-4 last:border-b-0"
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            (click)="enableNotifications()"
+            [disabled]="isEnablingNotifications || (notificationStatus$ | async) === 'denied'"
+            class="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            <p class="font-semibold">{{ notification.title }}</p>
-            <p class="mt-1 text-sm text-red-50">{{ notification.body }}</p>
-            <p class="mt-2 text-xs text-red-100">{{ notification.receivedAt | date: 'short' }}</p>
-          </div>
-        </ng-container>
+            {{ isEnablingNotifications ? 'Activando...' : 'Activar notificaciones' }}
+          </button>
+          <button
+            type="button"
+            (click)="goToNotifications()"
+            class="rounded-lg border border-white/30 px-3 py-2 text-sm font-semibold hover:bg-white/10"
+          >
+            Ver notificaciones
+          </button>
+          <button
+            *ngIf="(notificationStatus$ | async) === 'registered'"
+            type="button"
+            (click)="disableNotifications()"
+            class="rounded-lg border border-white/30 px-3 py-2 text-sm font-semibold hover:bg-white/10"
+          >
+            Desactivar
+          </button>
+        </div>
       </div>
     </section>
 

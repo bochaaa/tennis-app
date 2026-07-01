@@ -26,6 +26,7 @@ export interface AdminNotification {
   title: string;
   body: string;
   receivedAt: string;
+  readAt?: string;
   data?: Record<string, unknown>;
 }
 
@@ -34,14 +35,20 @@ export interface AdminNotification {
 })
 export class NotificationService {
   private readonly tokenStorageKey = 'admin_fcm_token';
+  private readonly notificationsStorageKey = 'admin_notifications';
   private statusSubject = new BehaviorSubject<NotificationStatus>(this.getInitialStatus());
-  private notificationsSubject = new BehaviorSubject<AdminNotification[]>([]);
+  private notificationsSubject = new BehaviorSubject<AdminNotification[]>(
+    this.getStoredNotifications(),
+  );
   private registrationPromise?: Promise<ServiceWorkerRegistration>;
   private firebaseApp?: FirebaseApp;
   private messaging?: Messaging;
 
   status$ = this.statusSubject.asObservable();
   notifications$ = this.notificationsSubject.asObservable();
+  unreadCount$ = this.notifications$.pipe(
+    map((notifications) => notifications.filter((notification) => !notification.readAt).length),
+  );
 
   constructor(private apiService: ApiService) {}
 
@@ -66,14 +73,17 @@ export class NotificationService {
       if (payload.type === 'PUSH_NOTIFICATION') {
         this.addNotification({
           title: payload.title || 'Nueva reserva',
-          body: payload.body || 'Hay una novedad en el panel.',
+          body: this.getBodyWithReservationDate(
+            payload.body || 'Hay una novedad en el panel.',
+            payload.data,
+          ),
           receivedAt: payload.receivedAt || new Date().toISOString(),
           data: payload.data,
         });
       }
 
       if (payload.type === 'OPEN_NOTIFICATION_TARGET' && payload.url) {
-        window.location.assign(payload.url);
+        window.location.assign('/admin/notifications');
       }
     });
   }
@@ -103,6 +113,7 @@ export class NotificationService {
     const token = localStorage.getItem(this.tokenStorageKey);
 
     if (!token) {
+      this.statusSubject.next(this.getInitialStatus());
       return of(null);
     }
 
@@ -113,6 +124,7 @@ export class NotificationService {
       .pipe(
         map((response) => {
           localStorage.removeItem(this.tokenStorageKey);
+          this.statusSubject.next(this.getInitialStatus());
           return response;
         }),
         catchError(() => of(null)),
@@ -120,7 +132,7 @@ export class NotificationService {
   }
 
   addLocalReservationNotification(title: string, body: string, data?: Record<string, unknown>): void {
-    this.addNotification({
+    this.addReceivedNotification({
       title,
       body,
       data,
@@ -128,8 +140,31 @@ export class NotificationService {
     });
   }
 
+  addReceivedNotification(notification: Omit<AdminNotification, 'id' | 'readAt'>): void {
+    this.addNotification({
+      ...notification,
+      body: this.getBodyWithReservationDate(notification.body, notification.data),
+    });
+  }
+
   clearNotifications(): void {
     this.notificationsSubject.next([]);
+    localStorage.removeItem(this.notificationsStorageKey);
+  }
+
+  markAllAsRead(): void {
+    const readAt = new Date().toISOString();
+    this.setNotifications(
+      this.notificationsSubject.value.map((notification) => ({
+        ...notification,
+        readAt: notification.readAt || readAt,
+      })),
+    );
+  }
+
+  getNotificationTargetUrl(notification: AdminNotification): string | null {
+    const url = notification.data?.['url'];
+    return typeof url === 'string' ? url : null;
   }
 
   private async requestPermissionAndRegisterDevice(): Promise<NotificationStatus> {
@@ -139,14 +174,15 @@ export class NotificationService {
       return permission;
     }
 
-    if (!environment.firebaseVapidKey) {
+    if (!environment.firebase.vapidKey) {
       return 'firebase-config-missing';
     }
 
     const registration = await this.registerServiceWorker();
+
     const messaging = await this.getMessagingInstance();
     const token = await getToken(messaging, {
-      vapidKey: environment.firebaseVapidKey,
+      vapidKey: environment.firebase.vapidKey,
       serviceWorkerRegistration: registration,
     });
 
@@ -158,7 +194,7 @@ export class NotificationService {
       platform: 'web',
       provider: 'fcm',
       token,
-      device_id: this.getDeviceId(),
+      device_id: 'web-chrome',
     };
 
     return await new Promise<NotificationStatus>((resolve) => {
@@ -172,8 +208,8 @@ export class NotificationService {
           if (status === 'registered') {
             localStorage.setItem(this.tokenStorageKey, token);
             this.addNotification({
-              title: 'Dispositivo registrado',
-              body: 'Este navegador ya quedo registrado para recibir notificaciones reales de Firebase Cloud Messaging.',
+              title: 'Notificaciones activadas',
+              body: 'Listo, te van a llegar avisos cuando entre una nueva reserva.',
               receivedAt: new Date().toISOString(),
             });
           }
@@ -185,7 +221,9 @@ export class NotificationService {
 
   private registerServiceWorker(): Promise<ServiceWorkerRegistration> {
     if (!this.registrationPromise) {
-      this.registrationPromise = navigator.serviceWorker.register('/firebase-messaging-sw.js');
+      this.registrationPromise = navigator.serviceWorker.register('/firebase-messaging-sw.js', {
+        updateViaCache: 'none',
+      });
     }
 
     return this.registrationPromise;
@@ -204,7 +242,7 @@ export class NotificationService {
 
         this.addNotification({
           title,
-          body,
+          body: this.getBodyWithReservationDate(body, payload.data),
           receivedAt: new Date().toISOString(),
           data: payload.data,
         });
@@ -235,7 +273,7 @@ export class NotificationService {
 
   private addNotification(notification: Omit<AdminNotification, 'id'>): void {
     const currentNotifications = this.notificationsSubject.value;
-    this.notificationsSubject.next([
+    this.setNotifications([
       {
         ...notification,
         id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
@@ -244,9 +282,79 @@ export class NotificationService {
     ]);
   }
 
+  private getBodyWithReservationDate(
+    body: string,
+    data?: Record<string, unknown>,
+  ): string {
+    const dateLabel = this.getReservationDateLabel(data);
+
+    if (!dateLabel || body.includes(dateLabel)) {
+      return body;
+    }
+
+    return `${body} - ${dateLabel}`;
+  }
+
+  private getReservationDateLabel(data?: Record<string, unknown>): string {
+    const rawDate = this.getReservationDate(data);
+
+    if (!rawDate || !/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+      return '';
+    }
+
+    const [year, month, day] = rawDate.split('-');
+    return `${day}/${month}/${year}`;
+  }
+
+  private getReservationDate(data?: Record<string, unknown>): string {
+    const explicitDate = data?.['date'];
+    if (typeof explicitDate === 'string' && explicitDate.trim().length > 0) {
+      return explicitDate.trim();
+    }
+
+    const url = data?.['url'];
+    if (typeof url !== 'string' || url.trim().length === 0) {
+      return '';
+    }
+
+    try {
+      return new URL(url, window.location.origin).searchParams.get('date') || '';
+    } catch {
+      return '';
+    }
+  }
+
+  private setNotifications(notifications: AdminNotification[]): void {
+    const latestNotifications = notifications.slice(0, 50);
+    this.notificationsSubject.next(latestNotifications);
+    localStorage.setItem(this.notificationsStorageKey, JSON.stringify(latestNotifications));
+  }
+
+  private getStoredNotifications(): AdminNotification[] {
+    if (typeof localStorage === 'undefined') {
+      return [];
+    }
+
+    try {
+      const rawNotifications = localStorage.getItem(this.notificationsStorageKey);
+      if (!rawNotifications) {
+        return [];
+      }
+
+      const notifications = JSON.parse(rawNotifications);
+      return Array.isArray(notifications) ? notifications : [];
+    } catch {
+      return [];
+    }
+  }
+
   private getInitialStatus(): NotificationStatus {
     if (!this.isBrowserNotificationSupported()) {
       return 'unsupported';
+    }
+
+    if (Notification.permission === 'granted' && localStorage.getItem(this.tokenStorageKey)) {
+      return 'registered';
     }
 
     return Notification.permission;
@@ -258,27 +366,5 @@ export class NotificationService {
       'Notification' in window &&
       'serviceWorker' in navigator
     );
-  }
-
-  private getDeviceId(): string {
-    const userAgent = navigator.userAgent.toLowerCase();
-
-    if (userAgent.includes('android')) {
-      return 'android-web';
-    }
-
-    if (userAgent.includes('chrome')) {
-      return 'chrome-web';
-    }
-
-    if (userAgent.includes('firefox')) {
-      return 'firefox-web';
-    }
-
-    if (userAgent.includes('safari')) {
-      return 'safari-web';
-    }
-
-    return 'web-admin';
   }
 }

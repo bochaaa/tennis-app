@@ -2,34 +2,34 @@
   class="min-h-screen bg-[radial-gradient(circle_at_top,_#ef4444_0%,_#b91c1c_45%,_#7f1d1d_100%)] text-white"
 >
   <nav class="border-b border-white/20 bg-black/20 backdrop-blur">
-    <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
+    <div class="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div>
         <p class="text-sm uppercase tracking-[0.2em] text-red-100">CSI Tenis</p>
         <h1 class="text-2xl font-bold">Control de Cobros</h1>
       </div>
       <button
         (click)="goToDashboard()"
-        class="rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10"
+        class="w-full rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10 sm:w-auto"
       >
         Volver al panel
       </button>
     </div>
   </nav>
 
-  <main class="mx-auto max-w-7xl px-4 py-8">
-    <section class="rounded-xl border border-white/20 bg-white/10 p-6">
-      <div class="mb-4 flex flex-wrap items-end gap-4">
-        <div>
+  <main class="mx-auto max-w-7xl px-3 py-5 sm:px-4 sm:py-8">
+    <section class="rounded-xl border border-white/20 bg-white/10 p-4 sm:p-6">
+      <div class="mb-4 flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end">
+        <div class="w-full sm:w-auto">
           <label class="mb-2 block text-sm font-semibold text-red-100">Fecha</label>
           <input
             type="date"
             [value]="selectedDate"
             (change)="onDateChanged($event)"
-            class="rounded-lg border border-white/30 bg-white/95 px-3 py-2 text-gray-900 outline-none focus:border-red-300"
+            class="w-full rounded-lg border border-white/30 bg-white/95 px-3 py-2 text-gray-900 outline-none focus:border-red-300 sm:w-auto"
           />
         </div>
 
-        <div>
+        <div class="w-full sm:w-auto">
           <p class="mb-2 text-sm font-semibold text-red-100">Estado de cobro</p>
           <div class="flex flex-wrap gap-2">
             <button
@@ -51,31 +51,23 @@
         <button
           type="button"
           (click)="loadReservations()"
-          class="rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10"
+          class="w-full rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10 sm:w-auto"
         >
           Actualizar
         </button>
       </div>
 
-      <p class="mb-4 text-xs text-red-100">
-        Esta pantalla muestra solo turnos normales de 90 minutos (no incluye clases recurrentes).
-      </p>
-      <p class="mb-4 text-xs text-red-100">
-        En "No cobrados" se listan todos los impagos sin filtrar por fecha. En "Pagados", si se aplica
-        la fecha seleccionada.
-      </p>
-
       <div class="mb-5 rounded-lg border border-white/20 bg-black/10 p-4">
-        <div class="flex flex-wrap items-end justify-between gap-4">
-          <div>
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div class="min-w-0">
             <p class="text-sm font-bold text-white">Resumen mensual para Rentas</p>
             <p class="mt-1 text-xs text-red-100">
               Exporta el CSV de pagos Mercado Pago del mes de la fecha seleccionada.
             </p>
           </div>
 
-          <div class="flex flex-wrap items-end gap-3">
-            <div>
+          <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
+            <div class="w-full sm:w-auto">
               <label class="mb-2 block text-sm font-semibold text-red-100">Fecha del mes</label>
               <input
                 type="date"
@@ -83,7 +75,7 @@
                 (click)="openDatePicker($event)"
                 (focus)="openDatePicker($event)"
                 (change)="onReportDateChanged($event)"
-                class="w-48 rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 outline-none focus:border-red-400"
+                class="w-full rounded-lg border border-gray-300 bg-white px-4 py-2 text-gray-900 outline-none focus:border-red-400 sm:w-48"
               />
             </div>
 
@@ -91,7 +83,7 @@
               type="button"
               (click)="exportMonthlyMercadoPagoReport()"
               [disabled]="isExportingMonthlyReport"
-              class="rounded-lg bg-white px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50 disabled:bg-white/60 disabled:text-red-300"
+              class="w-full rounded-lg bg-white px-4 py-2 text-sm font-bold text-red-700 transition hover:bg-red-50 disabled:bg-white/60 disabled:text-red-300 sm:w-auto"
             >
               {{ isExportingMonthlyReport ? 'Exportando...' : 'Exportar CSV' }}
             </button>
@@ -125,7 +117,8 @@
       <div *ngIf="!isLoading && reservations.length > 0" class="space-y-3">
         <article
           *ngFor="let reservation of reservations"
-          class="rounded-lg border border-white/20 bg-black/10 p-4"
+          [id]="'reservation-' + reservation.id"
+          [ngClass]="getReservationCardClasses(reservation)"
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -171,12 +164,12 @@
             {{ getPaidConfirmedByLabel(reservation) }}.
           </div>
 
-          <div class="mt-4 flex flex-wrap gap-2">
+          <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <button
               type="button"
               (click)="confirmPayment(reservation)"
               [disabled]="!canConfirmPayment(reservation) || isUpdating(reservation)"
-              class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:bg-emerald-900/60 disabled:text-emerald-200"
+              class="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:bg-emerald-900/60 disabled:text-emerald-200 sm:w-auto"
             >
               {{ isUpdating(reservation) ? 'Guardando...' : 'Marcar como pagado' }}
             </button>
@@ -185,9 +178,18 @@
               type="button"
               (click)="undoPayment(reservation)"
               [disabled]="!reservation.is_paid || isUpdating(reservation)"
-              class="rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10 disabled:opacity-60"
+              class="w-full rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10 disabled:opacity-60 sm:w-auto"
             >
               {{ isUpdating(reservation) ? 'Guardando...' : 'Marcar como no cobrado' }}
+            </button>
+
+            <button
+              type="button"
+              (click)="cancelReservation(reservation)"
+              [disabled]="!canCancelReservation(reservation) || isUpdating(reservation)"
+              class="w-full rounded-lg border border-red-200/50 bg-red-950/30 px-4 py-2 text-sm font-semibold text-red-50 transition hover:bg-red-900/50 disabled:opacity-60 sm:w-auto"
+            >
+              {{ isUpdating(reservation) ? 'Guardando...' : 'Cancelar turno' }}
             </button>
           </div>
         </article>
@@ -200,25 +202,28 @@
     class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
   >
     <div class="w-full max-w-md rounded-xl border border-white/20 bg-[#8f1c1c] p-5 shadow-2xl">
-      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-red-100">Confirmar Cobro</p>
+      <p class="text-xs font-semibold uppercase tracking-[0.16em] text-red-100">
+        {{ getPaymentModalEyebrow() }}
+      </p>
       <h3 class="mt-1 text-xl font-bold">{{ getPaymentModalTitle() }}</h3>
 
       <div class="mt-4 space-y-2 rounded-lg border border-white/20 bg-black/20 p-3 text-sm">
         <p><span class="text-red-100">Turno:</span> #{{ pendingPaymentReservation.id }}</p>
         <p>
           <span class="text-red-100">Cancha y horario:</span>
-          {{ getCourtName(pendingPaymentReservation) }} - {{ getReservationWhenLabel(pendingPaymentReservation) }}
+          {{ getCourtName(pendingPaymentReservation) }} -
+          {{ getReservationWhenLabel(pendingPaymentReservation) }}
         </p>
         <p><span class="text-red-100">Monto:</span> {{ getPendingPaymentAmountLabel() }}</p>
       </div>
 
       <p class="mt-4 text-sm text-red-100">{{ getPaymentModalBodyLabel() }}</p>
 
-      <div class="mt-5 flex flex-wrap justify-end gap-2">
+      <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
         <button
           type="button"
           (click)="closePaymentConfirmModal()"
-          class="rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10"
+          class="w-full rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10 sm:w-auto"
         >
           Cancelar
         </button>

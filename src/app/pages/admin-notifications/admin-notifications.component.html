@@ -1,0 +1,67 @@
+<div class="min-h-screen bg-[radial-gradient(circle_at_top,_#ef4444_0%,_#b91c1c_50%,_#7f1d1d_100%)] text-white">
+  <nav class="border-b border-white/20 bg-black/20 backdrop-blur">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:flex-nowrap">
+      <div class="flex items-center space-x-3">
+        <button (click)="goToDashboard()" class="text-2xl hover:opacity-70">&larr;</button>
+        <h1 class="text-xl font-bold sm:text-2xl">Notificaciones</h1>
+      </div>
+      <div class="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end sm:space-x-4">
+        <div class="text-right">
+          <p class="text-sm text-red-100">Administrador</p>
+          <p class="font-bold">{{ (currentAdmin$ | async) || 'Admin' }}</p>
+        </div>
+        <button
+          (click)="logout()"
+          class="shrink-0 rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10"
+        >
+          Cerrar sesion
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="mx-auto max-w-4xl px-4 py-4 sm:py-8">
+    <div class="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="text-lg font-bold">Avisos recibidos</h2>
+        <p class="text-sm text-red-100">Aca vas a ver las reservas nuevas y otros avisos del panel.</p>
+      </div>
+      <button
+        type="button"
+        (click)="clearNotifications()"
+        class="w-full rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10 sm:w-auto"
+      >
+        Limpiar
+      </button>
+    </div>
+
+    <ng-container *ngIf="notifications$ | async as notifications">
+      <div *ngIf="notifications.length === 0" class="rounded-lg border border-white/20 bg-white/10 p-6 text-sm text-red-50">
+        Todavia no hay notificaciones.
+      </div>
+
+      <div class="space-y-3">
+        <article
+          *ngFor="let notification of notifications"
+          class="rounded-lg border border-white/20 bg-white/10 p-4 shadow-lg shadow-black/10"
+        >
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p class="text-base font-bold">{{ notification.title }}</p>
+              <p class="mt-1 text-sm leading-6 text-red-50">{{ notification.body }}</p>
+              <p class="mt-2 text-xs text-red-100">{{ notification.receivedAt | date: 'short' }}</p>
+            </div>
+            <button
+              *ngIf="hasTarget(notification)"
+              type="button"
+              (click)="openNotificationTarget(notification)"
+              class="shrink-0 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+            >
+              Ver detalle
+            </button>
+          </div>
+        </article>
+      </div>
+    </ng-container>
+  </main>
+</div>

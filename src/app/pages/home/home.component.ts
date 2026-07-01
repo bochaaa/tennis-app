@@ -35,6 +35,15 @@ export class HomeComponent {
     this.router.navigate(['/reservations/payments']);
   }
 
+  goToAdminAccess(): void {
+    if (this.authService.isAuthenticated()) {
+      this.goToAdminPanel();
+      return;
+    }
+
+    this.loginAsAdmin();
+  }
+
   goToAdminPanel(): void {
     this.router.navigate(['/admin/dashboard']);
   }

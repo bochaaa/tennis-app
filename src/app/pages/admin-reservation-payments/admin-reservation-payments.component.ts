@@ -1,11 +1,11 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ReservationAdminItem } from '../../models';
 import { ApiService } from '../../services/api.service';
 
 type PaymentFilter = 'ALL' | 'PAID' | 'UNPAID';
-type PendingPaymentAction = 'mark_paid' | 'mark_unpaid';
+type PendingPaymentAction = 'mark_paid' | 'mark_unpaid' | 'cancel';
 
 @Component({
   selector: 'app-admin-reservation-payments',
@@ -22,6 +22,7 @@ export class AdminReservationPaymentsComponent implements OnInit {
   pendingPaymentAction: PendingPaymentAction | null = null;
   errorMessage = '';
   successMessage = '';
+  highlightedReservationId: number | null = null;
 
   selectedDate = this.getTodayDate();
   selectedReportDate = this.getTodayDate();
@@ -31,11 +32,13 @@ export class AdminReservationPaymentsComponent implements OnInit {
 
   constructor(
     private readonly apiService: ApiService,
+    private readonly route: ActivatedRoute,
     private readonly router: Router,
     private readonly cdr: ChangeDetectorRef,
   ) {}
 
   ngOnInit(): void {
+    this.applyRouteFilters();
     this.loadReservations();
   }
 
@@ -91,8 +94,10 @@ export class AdminReservationPaymentsComponent implements OnInit {
     if (this.paymentFilter === 'UNPAID') {
       // Trae todos los turnos impagos sin limitar por fecha.
       filters.unpaid = true;
-    } else if (this.paymentFilter === 'PAID') {
-      filters.is_paid = true;
+    } else {
+      if (this.paymentFilter === 'PAID') {
+        filters.is_paid = true;
+      }
       if (this.selectedDate) {
         filters.date = this.selectedDate;
       }
@@ -107,6 +112,7 @@ export class AdminReservationPaymentsComponent implements OnInit {
           );
           this.reservations = this.sortReservations(regularReservations);
           this.cdr.detectChanges();
+          this.scrollToHighlightedReservation();
         } catch (error) {
           console.error('Error procesando turnos para cobro:', error);
           this.reservations = [];
@@ -177,8 +183,21 @@ export class AdminReservationPaymentsComponent implements OnInit {
     this.pendingPaymentAction = 'mark_unpaid';
   }
 
+  cancelReservation(reservation: ReservationAdminItem): void {
+    if (!this.canCancelReservation(reservation)) {
+      return;
+    }
+
+    this.pendingPaymentReservation = reservation;
+    this.pendingPaymentAction = 'cancel';
+  }
+
   canConfirmPayment(reservation: ReservationAdminItem): boolean {
     return !reservation.is_paid && reservation.status !== 'CANCELLED';
+  }
+
+  canCancelReservation(reservation: ReservationAdminItem): boolean {
+    return reservation.status !== 'CANCELLED';
   }
 
   getPaymentFilterLabel(filter: PaymentFilter): string {
@@ -304,6 +323,20 @@ export class AdminReservationPaymentsComponent implements OnInit {
     return this.updatingReservationId === reservation.id;
   }
 
+  isHighlightedReservation(reservation: ReservationAdminItem): boolean {
+    return this.highlightedReservationId === reservation.id;
+  }
+
+  getReservationCardClasses(reservation: ReservationAdminItem): string {
+    const baseClasses = 'rounded-lg border p-4 transition';
+
+    if (this.isHighlightedReservation(reservation)) {
+      return `${baseClasses} border-white bg-white/20 shadow-xl shadow-black/20`;
+    }
+
+    return `${baseClasses} border-white/20 bg-black/10`;
+  }
+
   closePaymentConfirmModal(): void {
     this.pendingPaymentReservation = null;
     this.pendingPaymentAction = null;
@@ -315,6 +348,13 @@ export class AdminReservationPaymentsComponent implements OnInit {
     }
 
     const reservation = this.pendingPaymentReservation;
+    if (this.pendingPaymentAction === 'cancel') {
+      this.pendingPaymentReservation = null;
+      this.pendingPaymentAction = null;
+      this.cancelReservationById(reservation);
+      return;
+    }
+
     const isPaid = this.pendingPaymentAction === 'mark_paid';
     this.pendingPaymentReservation = null;
     this.pendingPaymentAction = null;
@@ -329,7 +369,15 @@ export class AdminReservationPaymentsComponent implements OnInit {
     return this.formatAmount(this.pendingPaymentReservation.total_price);
   }
 
+  getPaymentModalEyebrow(): string {
+    return this.pendingPaymentAction === 'cancel' ? 'Cancelar turno' : 'Confirmar cobro';
+  }
+
   getPaymentModalTitle(): string {
+    if (this.pendingPaymentAction === 'cancel') {
+      return 'Estas por cancelar un turno';
+    }
+
     if (this.pendingPaymentAction === 'mark_unpaid') {
       return 'Estas por marcar un turno como no cobrado';
     }
@@ -338,6 +386,10 @@ export class AdminReservationPaymentsComponent implements OnInit {
   }
 
   getPaymentModalBodyLabel(): string {
+    if (this.pendingPaymentAction === 'cancel') {
+      return 'El turno se va a cancelar y dejara de estar disponible como reserva activa.';
+    }
+
     if (this.pendingPaymentAction === 'mark_unpaid') {
       return 'Vas a deshacer la confirmacion de pago de este turno.';
     }
@@ -346,6 +398,10 @@ export class AdminReservationPaymentsComponent implements OnInit {
   }
 
   getPaymentModalConfirmLabel(): string {
+    if (this.pendingPaymentAction === 'cancel') {
+      return 'Si, cancelar turno';
+    }
+
     if (this.pendingPaymentAction === 'mark_unpaid') {
       return 'Si, marcar no cobrado';
     }
@@ -354,11 +410,15 @@ export class AdminReservationPaymentsComponent implements OnInit {
   }
 
   getPaymentModalConfirmClasses(): string {
-    if (this.pendingPaymentAction === 'mark_unpaid') {
-      return 'rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700';
+    if (this.pendingPaymentAction === 'cancel') {
+      return 'w-full rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800 sm:w-auto';
     }
 
-    return 'rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700';
+    if (this.pendingPaymentAction === 'mark_unpaid') {
+      return 'w-full rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-700 sm:w-auto';
+    }
+
+    return 'w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 sm:w-auto';
   }
 
   private updatePaymentStatus(reservation: ReservationAdminItem, isPaid: boolean): void {
@@ -389,6 +449,56 @@ export class AdminReservationPaymentsComponent implements OnInit {
         this.cdr.detectChanges();
       },
     });
+  }
+
+  private cancelReservationById(reservation: ReservationAdminItem): void {
+    if (!this.canCancelReservation(reservation)) {
+      return;
+    }
+
+    this.updatingReservationId = reservation.id;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.apiService.cancelReservation(reservation.id).subscribe({
+      next: () => {
+        this.updatingReservationId = null;
+        this.successMessage = `Turno #${reservation.id} cancelado.`;
+        this.loadReservations();
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        this.updatingReservationId = null;
+        this.errorMessage = this.extractErrorMessage(error, 'No se pudo cancelar el turno.');
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  private applyRouteFilters(): void {
+    const date = this.route.snapshot.queryParamMap.get('date');
+    const reservationId = this.route.snapshot.queryParamMap.get('reservation_id');
+
+    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      this.selectedDate = date;
+      this.paymentFilter = 'ALL';
+    }
+
+    if (reservationId && /^\d+$/.test(reservationId)) {
+      this.highlightedReservationId = Number(reservationId);
+    }
+  }
+
+  private scrollToHighlightedReservation(): void {
+    if (!this.highlightedReservationId) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      document
+        .getElementById(`reservation-${this.highlightedReservationId}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 0);
   }
 
   private sortReservations(reservations: ReservationAdminItem[]): ReservationAdminItem[] {

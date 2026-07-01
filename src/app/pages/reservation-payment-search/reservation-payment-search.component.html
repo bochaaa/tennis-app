@@ -104,7 +104,9 @@
         >
           <div class="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <p class="text-lg font-bold text-gray-900">Reserva #{{ reservation.id }}</p>
+              <p class="text-lg font-bold text-gray-900">
+                Reserva #{{ reservation.id }}{{ getReservationContactLabel(reservation) }}
+              </p>
               <p class="text-sm text-gray-600">
                 {{ getCourtName(reservation) }} - {{ getReservationWhenLabel(reservation) }}
               </p>
@@ -172,7 +174,7 @@
             <button
               type="button"
               (click)="toggleIndividualPayments(reservation)"
-              [disabled]="getMatchingPlayers(reservation).length === 0"
+              [disabled]="getReservationPlayers(reservation).length === 0"
               class="col-span-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-bold text-gray-800 transition hover:bg-gray-100 disabled:bg-gray-100 disabled:text-gray-400 sm:col-span-1 sm:w-auto sm:px-4"
             >
               {{
@@ -190,11 +192,19 @@
             <h3 class="font-bold text-gray-800">{{ getPlayersSectionTitle() }}</h3>
             <div class="mt-3 space-y-2">
               <div
-                *ngFor="let player of getMatchingPlayers(reservation)"
+                *ngFor="let player of getReservationPlayers(reservation)"
                 class="grid grid-cols-1 items-center gap-3 rounded-lg bg-gray-50 p-3 md:grid-cols-[1fr_auto]"
               >
                 <div>
-                  <p class="font-semibold text-gray-800">{{ getPlayerFullName(player) }}</p>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <p class="font-semibold text-gray-800">{{ getPlayerFullName(player) }}</p>
+                    <span
+                      *ngIf="isMatchingPlayer(reservation, player)"
+                      class="rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-700"
+                    >
+                      Coincide
+                    </span>
+                  </div>
                   <p class="text-xs text-gray-600">
                     {{ player.is_member ? 'Socio' : 'No socio' }} -
                     {{ formatCurrency(getPlayerPrice(player)) }}

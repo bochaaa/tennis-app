@@ -10,14 +10,9 @@
 
       <div class="flex items-center space-x-4">
         <ng-container *ngIf="isAdmin$ | async; else guestBadge">
-          <div
-            class="rounded-lg border border-emerald-300/60 bg-emerald-900/40 px-3 py-2 text-right"
-          >
-            <p class="text-[11px] uppercase tracking-wide text-emerald-100">Sesion iniciada</p>
-            <p class="text-sm font-semibold text-white">
-              {{ (currentAdmin$ | async) || 'Administrador' }}
-            </p>
-          </div>
+          <p class="hidden max-w-24 truncate text-right text-sm font-semibold text-red-50 sm:block">
+            {{ (currentAdmin$ | async) || 'Admin' }}
+          </p>
           <button
             (click)="logout()"
             class="rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10"
@@ -43,53 +38,29 @@
       <p class="text-lg text-red-100">Reserva turnos de tenis para el club en pocos pasos.</p>
     </div>
 
-    <div *ngIf="isAdmin$ | async" class="mb-8 flex justify-center">
-      <button
-        (click)="goToAdminPanel()"
-        class="rounded-lg bg-white px-8 py-4 text-lg font-bold text-red-700 transition hover:bg-red-50"
-      >
-        Ir al panel de administracion
-      </button>
-    </div>
-
-    <div class="mt-12 grid items-stretch gap-8 md:grid-cols-3">
-      <div class="flex min-h-[252px] flex-col rounded-xl border border-white/20 bg-white/10 p-8 backdrop-blur">
-        <h3 class="mb-3 text-3xl font-bold">Soy Administrador</h3>
-        <p class="text-red-100">Gestion de canchas, precios, horarios y reservas.</p>
+    <div
+      class="mx-auto mt-20 max-w-2xl rounded-xl border border-white/20 bg-white/10 p-5 shadow-2xl shadow-black/10 backdrop-blur sm:p-6"
+    >
+      <div class="grid gap-3">
         <button
-          *ngIf="!(isAdmin$ | async)"
-          (click)="loginAsAdmin()"
-          class="mt-auto w-full rounded-lg bg-white px-6 py-3 font-bold text-red-700 border-2 hover:bg-red-100 hover:border-white cursor-pointer"
+          (click)="goToAdminAccess()"
+          class="rounded-lg bg-white px-6 py-4 text-base font-bold text-red-700 transition hover:bg-red-50"
         >
-          Iniciar sesion
+          {{ (isAdmin$ | async) ? 'Ir al panel de administracion' : 'Iniciar sesion ' }}
         </button>
-        <div
-          *ngIf="isAdmin$ | async"
-          class="mt-auto rounded-lg border border-emerald-300/60 bg-emerald-900/40 px-4 py-3 text-center text-sm"
-        >
-          Ya estas logueado como administrador.
-        </div>
-      </div>
 
-      <div class="flex min-h-[252px] flex-col rounded-xl border border-white/20 bg-white/10 p-8 backdrop-blur">
-        <h3 class="mb-3 text-3xl font-bold">Soy Invitado</h3>
-        <p class="text-red-100">Reserva una cancha sin registrarte.</p>
         <button
           (click)="bookAsGuest()"
-          class="mt-auto w-full rounded-lg bg-white px-6 py-3 font-bold text-red-700 border-2 hover:bg-red-100 hover:border-white cursor-pointer"
+          class="rounded-lg border border-white/30 px-6 py-4 text-base font-bold text-white transition hover:bg-white/10"
         >
           Hacer una reserva
         </button>
-      </div>
 
-      <div class="flex min-h-[252px] flex-col rounded-xl border border-white/20 bg-white/10 p-8 backdrop-blur">
-        <h3 class="mb-3 text-3xl font-bold">Pagar Reserva</h3>
-        <p class="text-red-100">Busca un turno pendiente por nombre de jugador.</p>
         <button
           (click)="payReservationAsGuest()"
-          class="mt-auto w-full rounded-lg bg-white px-6 py-3 font-bold text-red-700 border-2 hover:bg-red-100 hover:border-white cursor-pointer"
+          class="rounded-lg border border-white/30 px-6 py-4 text-base font-bold text-white transition hover:bg-white/10"
         >
-          Buscar reserva
+          Pagar una reserva
         </button>
       </div>
     </div>

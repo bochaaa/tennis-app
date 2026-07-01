@@ -385,16 +385,31 @@ export class ReservationPaymentSearchComponent implements OnInit {
     return this.toNullableNumber(player.price_applied);
   }
 
-  getMatchingPlayers(reservation: ReservationPaymentSearchResult): Player[] {
-    if (Array.isArray(reservation.matching_players) && reservation.matching_players.length > 0) {
-      return reservation.matching_players;
-    }
-
+  getReservationPlayers(reservation: ReservationPaymentSearchResult): Player[] {
     return Array.isArray(reservation.players) ? reservation.players : [];
   }
 
+  isMatchingPlayer(reservation: ReservationPaymentSearchResult, player: Player): boolean {
+    if (this.listMode !== 'search' || !Array.isArray(reservation.matching_players)) {
+      return false;
+    }
+
+    return reservation.matching_players.some((matchingPlayer) => {
+      if (player.id && matchingPlayer.id) {
+        return player.id === matchingPlayer.id;
+      }
+
+      return this.getPlayerFullName(player) === this.getPlayerFullName(matchingPlayer);
+    });
+  }
+
+  getReservationContactLabel(reservation: ReservationPaymentSearchResult): string {
+    const contactName = reservation.contact_name?.trim();
+    return contactName ? ` - ${contactName}` : '';
+  }
+
   getPlayersSectionTitle(): string {
-    return this.listMode === 'search' ? 'Coincidencias' : 'Jugadores';
+    return 'Jugadores del turno';
   }
 
   getResultsTitle(): string {

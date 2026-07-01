@@ -3,11 +3,7 @@ import { Component } from '@angular/core';
 import { Router } from '@angular/router';
 import { Observable } from 'rxjs';
 import { AuthService } from '../../services/auth.service';
-import {
-  AdminNotification,
-  NotificationService,
-  NotificationStatus,
-} from '../../services/notification.service';
+import { NotificationService, NotificationStatus } from '../../services/notification.service';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -19,7 +15,7 @@ import {
 export class AdminDashboardComponent {
   currentAdmin$: Observable<string | null>;
   notificationStatus$: Observable<NotificationStatus>;
-  notifications$: Observable<AdminNotification[]>;
+  unreadNotifications$: Observable<number>;
   isEnablingNotifications = false;
 
   constructor(
@@ -29,7 +25,7 @@ export class AdminDashboardComponent {
   ) {
     this.currentAdmin$ = this.authService.getCurrentAdmin();
     this.notificationStatus$ = this.notificationService.status$;
-    this.notifications$ = this.notificationService.notifications$;
+    this.unreadNotifications$ = this.notificationService.unreadCount$;
   }
 
   logout(): void {
@@ -63,12 +59,20 @@ export class AdminDashboardComponent {
     this.router.navigate(['/admin/reservation-payments']);
   }
 
+  goToNotifications(): void {
+    this.router.navigate(['/admin/notifications']);
+  }
+
   enableNotifications(): void {
     this.isEnablingNotifications = true;
 
     this.notificationService.enableNotifications().subscribe(() => {
       this.isEnablingNotifications = false;
     });
+  }
+
+  disableNotifications(): void {
+    this.notificationService.unregisterDevice().subscribe();
   }
 
   clearNotifications(): void {
@@ -78,13 +82,13 @@ export class AdminDashboardComponent {
   getNotificationStatusLabel(status: NotificationStatus | null): string {
     switch (status) {
       case 'registered':
-        return 'Dispositivo registrado para pruebas';
+        return 'Notificaciones activadas';
       case 'backend-pending':
-        return 'Permiso activo, no se pudo registrar en backend';
+        return 'No se pudieron activar. Probá de nuevo.';
       case 'granted':
-        return 'Permiso activo';
+        return 'Permiso concedido';
       case 'firebase-config-missing':
-        return 'Falta clave Web Push de Firebase';
+        return 'No se pudieron activar';
       case 'denied':
         return 'Permiso bloqueado';
       case 'unsupported':
