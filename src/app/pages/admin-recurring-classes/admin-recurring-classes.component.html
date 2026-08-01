@@ -6,7 +6,9 @@
       class="recurring-page__nav mx-auto flex max-w-6xl flex-wrap items-start justify-between gap-3 px-4 py-4 sm:flex-nowrap sm:items-center"
     >
       <div>
-        <p class="text-sm uppercase tracking-[0.14em] text-red-100 sm:tracking-[0.2em]">CSI Tenis</p>
+        <p class="text-sm uppercase tracking-[0.14em] text-red-100 sm:tracking-[0.2em]">
+          CSI Tenis
+        </p>
         <h1 class="text-2xl font-bold">Clases Recurrentes</h1>
       </div>
       <button
@@ -19,10 +21,22 @@
   </nav>
 
   <main class="recurring-page__main mx-auto grid max-w-6xl gap-6 px-4 py-8 lg:grid-cols-5">
-    <section class="recurring-page__panel rounded-xl border border-white/20 bg-white/10 p-4 sm:p-6 lg:col-span-2">
-      <h2 class="mb-4 text-xl font-semibold">
-        {{ editingRuleId ? 'Editar clase' : 'Nueva clase' }}
-      </h2>
+    <section
+      *ngIf="isFormOpen"
+      class="recurring-page__panel order-1 rounded-xl border border-white/20 bg-white/10 p-4 sm:p-6 lg:order-2 lg:col-span-2"
+    >
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-xl font-semibold">
+          {{ editingRuleId ? 'Editar clase' : 'Nueva clase' }}
+        </h2>
+        <button
+          type="button"
+          (click)="toggleRecurringRuleForm()"
+          class="rounded-lg border border-white/30 px-4 py-2 text-sm font-semibold hover:bg-white/10"
+        >
+          {{ isFormOpen ? 'Cerrar' : 'Agregar clase' }}
+        </button>
+      </div>
 
       <form
         [formGroup]="recurringRuleForm"
@@ -103,40 +117,42 @@
             [formGroupName]="i"
             class="mb-2 rounded-md border border-white/20 p-2"
           >
-            <div class="grid grid-cols-1 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
+            <div class="grid grid-cols-[minmax(0,1fr)_2.5rem] gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-2">
               <select
                 formControlName="day_of_week"
-                class="w-full min-w-0 rounded-lg border border-white/30 bg-white/95 px-2 py-2 text-gray-900 outline-none focus:border-red-300 sm:min-w-[220px] sm:flex-1"
+                class="h-10 w-full min-w-0 rounded-lg border border-white/30 bg-white/95 px-2 py-2 text-gray-900 outline-none focus:border-red-300 sm:min-w-[220px] sm:flex-1"
               >
                 <option *ngFor="let day of daysOfWeek" [value]="day">
                   {{ getDayLabel(day) }}
                 </option>
               </select>
 
-              <input
-                formControlName="start_time"
-                type="time"
-                (change)="onStartTimeChanged(i)"
-                class="w-full rounded-lg border border-white/30 bg-white/95 px-2 py-2 text-gray-900 outline-none focus:border-red-300 sm:w-[110px]"
-              />
-
-              <input
-                formControlName="end_time"
-                type="time"
-                readonly
-                class="w-full rounded-lg border border-white/30 bg-gray-100 px-2 py-2 text-gray-700 outline-none sm:w-[110px]"
-              />
-
               <button
                 type="button"
                 (click)="removeTimeSlot(i)"
                 [disabled]="timeSlots.length <= 1"
-                class="h-10 w-full rounded-lg border border-white/30 text-sm font-bold hover:bg-white/10 disabled:opacity-50 sm:w-10"
+                class="h-10 w-10 rounded-lg border border-white/30 text-sm font-bold hover:bg-white/10 disabled:opacity-50 sm:order-4"
                 aria-label="Eliminar horario"
                 title="Eliminar horario"
               >
                 X
               </button>
+
+              <div class="col-span-2 grid grid-cols-2 gap-2 sm:contents">
+                <input
+                  formControlName="start_time"
+                  type="time"
+                  (change)="onStartTimeChanged(i)"
+                  class="h-10 w-full rounded-lg border border-white/30 bg-white/95 px-2 py-2 text-gray-900 outline-none focus:border-red-300 sm:w-[110px]"
+                />
+
+                <input
+                  formControlName="end_time"
+                  type="time"
+                  readonly
+                  class="h-10 w-full rounded-lg border border-white/30 bg-gray-100 px-2 py-2 text-gray-700 outline-none sm:w-[110px]"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -160,35 +176,58 @@
           </button>
         </div>
 
+        <div
+          *ngIf="errorMessage || errorDetails.length > 0"
+          class="rounded-lg border border-red-300/70 bg-red-950/40 px-3 py-2 text-sm"
+        >
+          <p class="font-semibold">No se pudo guardar la clase</p>
+          <ul *ngIf="errorDetails.length > 0" class="mt-1 list-disc space-y-1 pl-5 text-red-50">
+            <li *ngFor="let detail of errorDetails">{{ detail }}</li>
+          </ul>
+          <p *ngIf="errorDetails.length === 0" class="text-red-50">{{ errorMessage }}</p>
+        </div>
+
         <p class="text-xs text-red-100">
-          Al crear o editar, el backend genera automaticamente clases para los proximos 90 dias.
+          Al crear o editar, se genera automaticamente las clases para los proximos 90 dias.
         </p>
       </form>
+    </section>
+
+    <section
+      class="recurring-page__panel order-2 rounded-xl border border-white/20 bg-white/10 p-4 sm:p-6 lg:order-1"
+      [ngClass]="isFormOpen ? 'lg:col-span-3' : 'lg:col-span-5'"
+    >
+      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 class="text-xl font-semibold">Clases cargadas</h2>
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            (click)="toggleRecurringRuleForm()"
+            class="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+          >
+            {{ isFormOpen ? 'Cerrar formulario' : 'Agregar clase' }}
+          </button>
+          <button
+            (click)="loadRecurringRules()"
+            class="rounded-lg border border-white/30 px-3 py-2 text-sm hover:bg-white/10"
+          >
+            Actualizar
+          </button>
+        </div>
+      </div>
 
       <p
-        *ngIf="errorMessage"
-        class="mt-4 rounded-lg border border-red-300/60 bg-red-900/40 px-3 py-2 text-sm"
+        *ngIf="(errorMessage || errorDetails.length > 0) && !isFormOpen"
+        class="mb-4 rounded-lg border border-red-300/60 bg-red-900/40 px-3 py-2 text-sm"
       >
-        {{ errorMessage }}
+        {{ errorDetails.length > 0 ? errorDetails.join(' ') : errorMessage }}
       </p>
       <p
         *ngIf="successMessage"
-        class="mt-4 rounded-lg border border-emerald-300/60 bg-emerald-900/40 px-3 py-2 text-sm"
+        class="mb-4 rounded-lg border border-emerald-300/60 bg-emerald-900/40 px-3 py-2 text-sm"
       >
         {{ successMessage }}
       </p>
-    </section>
-
-    <section class="recurring-page__panel rounded-xl border border-white/20 bg-white/10 p-4 sm:p-6 lg:col-span-3">
-      <div class="mb-4 flex items-center justify-between">
-        <h2 class="text-xl font-semibold">Clases cargadas</h2>
-        <button
-          (click)="loadRecurringRules()"
-          class="rounded-lg border border-white/30 px-3 py-1 text-sm hover:bg-white/10"
-        >
-          Actualizar
-        </button>
-      </div>
 
       <p *ngIf="isLoading" class="text-sm text-red-100">Cargando clases...</p>
 
@@ -233,12 +272,15 @@
           <div class="min-w-0">
             <p class="font-semibold">Titulo: {{ getRuleTitle(rule) }}</p>
             <p class="text-sm text-red-100">Cancha: {{ getRuleCourtName(rule) }}</p>
-            <p class="text-sm text-red-100">Dia: {{ getRuleDaysLabel(rule) }}</p>
+            <p class="text-sm text-red-100">Dias: {{ getRuleGroupDaysLabel(rule) }}</p>
             <p class="text-sm text-red-100">Hora: {{ getRuleTimeLabel(rule) }}</p>
             <p class="text-xs text-red-200">Estado: {{ getRuleActiveLabel(rule) }}</p>
           </div>
 
-          <div class="flex flex-wrap gap-2">
+          <div
+            *ngIf="!isDeletePending(rule) && !isDeactivatePending(rule)"
+            class="flex flex-wrap gap-2"
+          >
             <button
               (click)="editRule(rule)"
               class="rounded-md border border-white/30 px-3 py-1 text-sm hover:bg-white/10"
@@ -247,16 +289,50 @@
             </button>
             <button
               *ngIf="isRuleActive(rule)"
-              (click)="deactivateRule(rule)"
+              (click)="requestDeactivateRule(rule)"
               class="rounded-md border border-amber-300/60 bg-amber-900/30 px-3 py-1 text-sm hover:bg-amber-900/50"
             >
               Desactivar
             </button>
             <button
-              (click)="deleteRule(rule)"
+              (click)="requestDeleteRule(rule)"
               class="rounded-md bg-red-900/50 px-3 py-1 text-sm hover:bg-red-900/70"
             >
               Eliminar
+            </button>
+          </div>
+
+          <div *ngIf="isDeletePending(rule)" class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              (click)="cancelDeleteRule()"
+              class="rounded-md border border-white/30 px-3 py-1 text-sm hover:bg-white/10"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              (click)="deleteRule(rule)"
+              class="rounded-md bg-red-900/70 px-3 py-1 text-sm font-semibold hover:bg-red-900"
+            >
+              Si, eliminar
+            </button>
+          </div>
+
+          <div *ngIf="isDeactivatePending(rule)" class="flex flex-wrap gap-2">
+            <button
+              type="button"
+              (click)="cancelDeactivateRule()"
+              class="rounded-md border border-white/30 px-3 py-1 text-sm hover:bg-white/10"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              (click)="deactivateRule(rule)"
+              class="rounded-md border border-amber-300/60 bg-amber-900/40 px-3 py-1 text-sm font-semibold hover:bg-amber-900/60"
+            >
+              Si, desactivar
             </button>
           </div>
         </article>

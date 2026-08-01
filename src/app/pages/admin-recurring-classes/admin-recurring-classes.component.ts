@@ -2,11 +2,13 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
-import { forkJoin } from 'rxjs';
+import { forkJoin, Observable, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { Court, DayOfWeek, RecurringRule, RecurringRuleWriteRequest } from '../../models';
 import { ApiService } from '../../services/api.service';
 
 type RecurringDayFilter = DayOfWeek | 'ALL';
+type SaveRequestResult = { success: true } | { success: false; error: unknown };
 
 @Component({
   selector: 'app-admin-recurring-classes',
@@ -31,9 +33,13 @@ export class AdminRecurringClassesComponent implements OnInit {
   isLoading = false;
   isSaving = false;
   errorMessage = '';
+  errorDetails: string[] = [];
   successMessage = '';
 
   recurringRuleForm!: FormGroup;
+  isFormOpen = false;
+  pendingDeleteRuleId: number | null = null;
+  pendingDeactivateRuleId: number | null = null;
   editingRuleId: number | null = null;
   editingGroupRuleIds: number[] = [];
   readonly dayFilters: RecurringDayFilter[] = ['ALL', ...this.daysOfWeek];
@@ -106,17 +112,20 @@ export class AdminRecurringClassesComponent implements OnInit {
     if (this.recurringRuleForm.invalid) {
       this.recurringRuleForm.markAllAsTouched();
       this.errorMessage = 'Completa cancha, titulo y fecha de inicio.';
+      this.errorDetails = [];
       return;
     }
 
     const payloads = this.buildPayloads();
     if (!payloads || payloads.length === 0) {
       this.errorMessage = 'Revisa los horarios de la clase.';
+      this.errorDetails = [];
       return;
     }
 
     this.isSaving = true;
     this.errorMessage = '';
+    this.errorDetails = [];
     this.successMessage = '';
 
     if (this.editingRuleId) {
@@ -151,11 +160,14 @@ export class AdminRecurringClassesComponent implements OnInit {
       return;
     }
 
-    const requests = payloads.map((payload) => this.apiService.createRecurringRule(payload));
+    const requests = payloads.map((payload) =>
+      this.toSaveResult(this.apiService.createRecurringRule(payload)),
+    );
     forkJoin(requests).subscribe({
-      next: () =>
-        this.onSaved(
-          `Se crearon ${payloads.length} clases. El backend genero automaticamente las proximas 90 dias.`,
+      next: (results) =>
+        this.handleSaveResults(
+          results,
+          `Se crearon ${payloads.length} clases. Se generaron automaticamente las proximas 90 dias.`,
         ),
       error: (error) => this.onSaveError(error),
     });
@@ -171,12 +183,17 @@ export class AdminRecurringClassesComponent implements OnInit {
     const groupRules = this.findRulesInSameGroup(rule);
     const slots = this.buildSlotsFromRules(groupRules);
     const fallbackStartTime = this.toInputTime(rule.start_time) || '09:00';
-    const fallbackEndTime = this.toInputTime(rule.end_time) || this.addMinutes(fallbackStartTime, 60);
+    const fallbackEndTime =
+      this.toInputTime(rule.end_time) || this.addMinutes(fallbackStartTime, 60);
 
     this.editingRuleId = rule.id;
     this.editingGroupRuleIds = groupRules.map((item) => item.id);
+    this.isFormOpen = true;
+    this.pendingDeleteRuleId = null;
+    this.pendingDeactivateRuleId = null;
     this.successMessage = '';
     this.errorMessage = '';
+    this.errorDetails = [];
     this.resetTimeSlots();
     for (const slot of slots) {
       this.timeSlots.push(
@@ -210,16 +227,25 @@ export class AdminRecurringClassesComponent implements OnInit {
   cancelEdit(): void {
     this.editingRuleId = null;
     this.editingGroupRuleIds = [];
-    this.resetTimeSlots();
-    this.timeSlots.push(this.createTimeSlotGroup());
-    this.recurringRuleForm.reset({
-      court: null,
-      title: '',
-      start_date: this.getTodayDate(),
-      end_date: '',
-      active: true,
-      notes: '',
-    });
+    this.isFormOpen = false;
+    this.resetCreateForm();
+  }
+
+  toggleRecurringRuleForm(): void {
+    if (this.isFormOpen) {
+      this.cancelEdit();
+      return;
+    }
+
+    this.editingRuleId = null;
+    this.editingGroupRuleIds = [];
+    this.errorMessage = '';
+    this.errorDetails = [];
+    this.successMessage = '';
+    this.pendingDeleteRuleId = null;
+    this.pendingDeactivateRuleId = null;
+    this.resetCreateForm();
+    this.isFormOpen = true;
   }
 
   get timeSlots(): FormArray {
@@ -246,17 +272,30 @@ export class AdminRecurringClassesComponent implements OnInit {
     group.patchValue({ end_time: this.addMinutes(startTime, 60) }, { emitEvent: false });
   }
 
-  deleteRule(rule: RecurringRule): void {
-    const confirmed = confirm(
-      `Eliminar clase ${this.getRuleDaysLabel(rule)} ${this.getRuleTimeLabel(rule)}?`,
-    );
-    if (!confirmed) {
-      return;
-    }
-
+  requestDeleteRule(rule: RecurringRule): void {
+    this.pendingDeleteRuleId = rule.id;
+    this.pendingDeactivateRuleId = null;
     this.errorMessage = '';
     this.successMessage = '';
-    this.apiService.deleteRecurringRule(rule.id).subscribe({
+  }
+
+  cancelDeleteRule(): void {
+    this.pendingDeleteRuleId = null;
+  }
+
+  isDeletePending(rule: RecurringRule): boolean {
+    return this.pendingDeleteRuleId === rule.id;
+  }
+
+  deleteRule(rule: RecurringRule): void {
+    const groupRules = this.findRulesInSameGroup(rule);
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.pendingDeleteRuleId = null;
+    this.pendingDeactivateRuleId = null;
+    forkJoin(
+      groupRules.map((groupRule) => this.apiService.deleteRecurringRule(groupRule.id)),
+    ).subscribe({
       next: () => {
         this.successMessage = 'Clase eliminada correctamente.';
         this.loadRecurringRules();
@@ -267,21 +306,36 @@ export class AdminRecurringClassesComponent implements OnInit {
     });
   }
 
+  requestDeactivateRule(rule: RecurringRule): void {
+    this.pendingDeactivateRuleId = rule.id;
+    this.pendingDeleteRuleId = null;
+    this.errorMessage = '';
+    this.successMessage = '';
+  }
+
+  cancelDeactivateRule(): void {
+    this.pendingDeactivateRuleId = null;
+  }
+
+  isDeactivatePending(rule: RecurringRule): boolean {
+    return this.pendingDeactivateRuleId === rule.id;
+  }
+
   deactivateRule(rule: RecurringRule): void {
     if (!this.isRuleActive(rule)) {
       return;
     }
 
-    const confirmed = confirm(
-      `Desactivar clase "${this.getRuleTitle(rule)}"? Se cancelaran las clases futuras generadas por esta plantilla.`,
-    );
-    if (!confirmed) {
-      return;
-    }
-
+    const groupRules = this.findRulesInSameGroup(rule);
     this.errorMessage = '';
     this.successMessage = '';
-    this.apiService.deactivateRecurringRule(rule.id, 'Desactivada desde panel admin').subscribe({
+    this.pendingDeactivateRuleId = null;
+    this.pendingDeleteRuleId = null;
+    forkJoin(
+      groupRules.map((groupRule) =>
+        this.apiService.deactivateRecurringRule(groupRule.id, 'Desactivada desde panel admin'),
+      ),
+    ).subscribe({
       next: () => {
         this.successMessage =
           'Clase desactivada. Se cancelaron las clases futuras de esta plantilla.';
@@ -323,13 +377,18 @@ export class AdminRecurringClassesComponent implements OnInit {
 
   get filteredRecurringRules(): RecurringRule[] {
     const activeRules = this.recurringRules.filter((rule) => this.isRuleActive(rule));
+    const groupedRules = this.groupRecurringRules(activeRules);
     const dayFilter = this.selectedDayFilter;
 
     if (dayFilter === 'ALL') {
-      return activeRules;
+      return groupedRules;
     }
 
-    return activeRules.filter((rule) => this.normalizeRuleDays(rule).includes(dayFilter));
+    return groupedRules.filter((rule) =>
+      this.findRulesInSameGroup(rule).some((groupRule) =>
+        this.normalizeRuleDays(groupRule).includes(dayFilter),
+      ),
+    );
   }
 
   getEmptyFilterMessage(): string {
@@ -370,6 +429,14 @@ export class AdminRecurringClassesComponent implements OnInit {
     return days.map((day) => this.getDayLabel(day)).join(', ');
   }
 
+  getRuleGroupDaysLabel(rule: RecurringRule): string {
+    const days = this.collectGroupDays(rule);
+    if (days.length === 0) {
+      return 'Dia sin definir';
+    }
+    return days.map((day) => this.getDayLabel(day)).join(', ');
+  }
+
   getRuleTimeLabel(rule: RecurringRule): string {
     const start = this.toInputTime(rule.start_time) || '--:--';
     const end = this.toInputTime(rule.end_time) || this.addMinutes(start, 60);
@@ -390,6 +457,7 @@ export class AdminRecurringClassesComponent implements OnInit {
 
   private onSaved(message: string): void {
     this.isSaving = false;
+    this.errorDetails = [];
     this.successMessage = message;
     this.cancelEdit();
     this.loadRecurringRules();
@@ -397,7 +465,32 @@ export class AdminRecurringClassesComponent implements OnInit {
 
   private onSaveError(error: unknown): void {
     this.isSaving = false;
-    this.errorMessage = this.extractErrorMessage(error, 'No se pudo guardar la clase.');
+    this.errorDetails = this.extractErrorDetails(error);
+    this.errorMessage =
+      this.errorDetails.length > 0
+        ? 'Revisa los datos de la clase.'
+        : this.extractErrorMessage(error, 'No se pudo guardar la clase.');
+    this.cdr.detectChanges();
+  }
+
+  private toSaveResult<T>(request: Observable<T>): Observable<SaveRequestResult> {
+    return request.pipe(
+      map((): SaveRequestResult => ({ success: true })),
+      catchError((error) => of({ success: false as const, error })),
+    );
+  }
+
+  private handleSaveResults(results: SaveRequestResult[], successMessage: string): void {
+    const errors = results
+      .filter((result): result is { success: false; error: unknown } => !result.success)
+      .map((result) => result.error);
+
+    if (errors.length > 0) {
+      this.onSaveError(errors);
+      return;
+    }
+
+    this.onSaved(successMessage);
   }
 
   private buildPayloads(): RecurringRuleWriteRequest[] | null {
@@ -457,21 +550,26 @@ export class AdminRecurringClassesComponent implements OnInit {
       return aStart - bStart;
     });
 
-    const groupIds = this.editingGroupRuleIds.length > 0 ? [...this.editingGroupRuleIds] : [this.editingRuleId];
-    const requests: Array<ReturnType<ApiService['updateRecurringRule']> | ReturnType<ApiService['createRecurringRule']> | ReturnType<ApiService['deleteRecurringRule']>> = [];
+    const groupIds =
+      this.editingGroupRuleIds.length > 0 ? [...this.editingGroupRuleIds] : [this.editingRuleId];
+    const requests: Array<Observable<SaveRequestResult>> = [];
 
     const toUpdateCount = Math.min(groupIds.length, orderedPayloads.length);
 
     for (let index = 0; index < toUpdateCount; index++) {
-      requests.push(this.apiService.updateRecurringRule(groupIds[index], orderedPayloads[index]));
+      requests.push(
+        this.toSaveResult(
+          this.apiService.updateRecurringRule(groupIds[index], orderedPayloads[index]),
+        ),
+      );
     }
 
     for (let index = toUpdateCount; index < orderedPayloads.length; index++) {
-      requests.push(this.apiService.createRecurringRule(orderedPayloads[index]));
+      requests.push(this.toSaveResult(this.apiService.createRecurringRule(orderedPayloads[index])));
     }
 
     for (let index = toUpdateCount; index < groupIds.length; index++) {
-      requests.push(this.apiService.deleteRecurringRule(groupIds[index]));
+      requests.push(this.toSaveResult(this.apiService.deleteRecurringRule(groupIds[index])));
     }
 
     if (requests.length === 0) {
@@ -480,8 +578,11 @@ export class AdminRecurringClassesComponent implements OnInit {
     }
 
     forkJoin(requests).subscribe({
-      next: () =>
-        this.onSaved('Clase actualizada. Se sincronizaron todos los dias y horarios de esta clase.'),
+      next: (results) =>
+        this.handleSaveResults(
+          results,
+          'Clase actualizada. Se sincronizaron todos los dias y horarios de esta clase.',
+        ),
       error: (error) => this.onSaveError(error),
     });
   }
@@ -501,6 +602,19 @@ export class AdminRecurringClassesComponent implements OnInit {
     });
   }
 
+  private groupRecurringRules(rules: RecurringRule[]): RecurringRule[] {
+    const grouped = new Map<string, RecurringRule>();
+
+    for (const rule of this.sortRules(rules)) {
+      const key = this.getRuleGroupKey(rule);
+      if (!grouped.has(key)) {
+        grouped.set(key, rule);
+      }
+    }
+
+    return Array.from(grouped.values());
+  }
+
   private findRulesInSameGroup(rule: RecurringRule): RecurringRule[] {
     const ruleCourtId = this.getRuleCourtId(rule);
     if (!ruleCourtId) {
@@ -511,6 +625,7 @@ export class AdminRecurringClassesComponent implements OnInit {
     const baseStartDate = String(rule.start_date || '').trim();
     const baseEndDate = String(rule.end_date || '').trim();
     const baseStartTime = this.toInputTime(rule.start_time) || '';
+    const baseEndTime = this.toInputTime(rule.end_time) || '';
 
     const matches = this.recurringRules.filter((candidate) => {
       if (!this.isRuleActive(candidate)) {
@@ -538,7 +653,12 @@ export class AdminRecurringClassesComponent implements OnInit {
       }
 
       const candidateStartTime = this.toInputTime(candidate.start_time) || '';
-      return candidateStartTime === baseStartTime;
+      if (candidateStartTime !== baseStartTime) {
+        return false;
+      }
+
+      const candidateEndTime = this.toInputTime(candidate.end_time) || '';
+      return candidateEndTime === baseEndTime;
     });
 
     const withCurrent = matches.some((item) => item.id === rule.id) ? matches : [rule, ...matches];
@@ -550,10 +670,35 @@ export class AdminRecurringClassesComponent implements OnInit {
     return this.sortRules(Array.from(uniqueById.values()));
   }
 
+  private collectGroupDays(rule: RecurringRule): DayOfWeek[] {
+    const days = new Set<DayOfWeek>();
+    for (const groupRule of this.findRulesInSameGroup(rule)) {
+      for (const day of this.normalizeRuleDays(groupRule)) {
+        days.add(day);
+      }
+    }
+
+    return Array.from(days).sort((a, b) => (this.dayOrder[a] ?? 99) - (this.dayOrder[b] ?? 99));
+  }
+
+  private getRuleGroupKey(rule: RecurringRule): string {
+    const courtId = this.getRuleCourtId(rule) ?? 'sin-cancha';
+    const title = this.normalizeText(this.getRuleTitle(rule));
+    const startDate = String(rule.start_date || '').trim();
+    const endDate = String(rule.end_date || '').trim();
+    const startTime = this.toInputTime(rule.start_time) || '';
+    const endTime = this.toInputTime(rule.end_time) || '';
+
+    return [courtId, title, startDate, endDate, startTime, endTime].join('|');
+  }
+
   private buildSlotsFromRules(
     rules: RecurringRule[],
   ): Array<{ day_of_week: DayOfWeek; start_time: string; end_time: string }> {
-    const slotMap = new Map<string, { day_of_week: DayOfWeek; start_time: string; end_time: string }>();
+    const slotMap = new Map<
+      string,
+      { day_of_week: DayOfWeek; start_time: string; end_time: string }
+    >();
 
     for (const rule of rules) {
       const days = this.normalizeRuleDays(rule);
@@ -665,6 +810,19 @@ export class AdminRecurringClassesComponent implements OnInit {
     }
   }
 
+  private resetCreateForm(): void {
+    this.recurringRuleForm.reset({
+      court: null,
+      title: '',
+      start_date: this.getTodayDate(),
+      end_date: '',
+      active: true,
+      notes: '',
+    });
+    this.resetTimeSlots();
+    this.timeSlots.push(this.createTimeSlotGroup());
+  }
+
   private createTimeSlotGroup(initial?: {
     day_of_week?: DayOfWeek;
     start_time?: string;
@@ -688,9 +846,49 @@ export class AdminRecurringClassesComponent implements OnInit {
     return `${year}-${month}-${day}`;
   }
 
-  private extractErrorMessage(error: unknown, fallback: string): string {
+  private extractErrorDetails(error: unknown): string[] {
+    if (Array.isArray(error)) {
+      return error.flatMap((item) => this.extractErrorDetails(item));
+    }
+
+    const payload = this.extractErrorPayload(error);
+    if (!payload || typeof payload !== 'object') {
+      return [];
+    }
+
+    const objectPayload = payload as Record<string, unknown>;
+    const detailMessages = this.toStringList(objectPayload['detail']);
+    if (detailMessages.length > 0) {
+      return detailMessages;
+    }
+
+    const nestedError = objectPayload['error'];
+    if (nestedError && nestedError !== payload) {
+      return this.extractErrorDetails({ error: nestedError });
+    }
+
+    return [];
+  }
+
+  private extractErrorPayload(error: unknown): unknown {
     const errorValue = error as { error?: unknown };
-    const payload = errorValue?.error;
+    return errorValue?.error ?? error;
+  }
+
+  private toStringList(value: unknown): string[] {
+    if (Array.isArray(value)) {
+      return value.map((item) => String(item)).filter((item) => item.trim().length > 0);
+    }
+
+    if (typeof value === 'string' && value.trim().length > 0) {
+      return [value.trim()];
+    }
+
+    return [];
+  }
+
+  private extractErrorMessage(error: unknown, fallback: string): string {
+    const payload = this.extractErrorPayload(error);
     if (!payload) {
       return fallback;
     }
@@ -704,6 +902,14 @@ export class AdminRecurringClassesComponent implements OnInit {
       const detail = objectPayload['detail'];
       if (typeof detail === 'string' && detail.trim().length > 0) {
         return detail;
+      }
+      if (Array.isArray(detail) && detail.length > 0) {
+        const detailMessage = this.toStringList(detail).join(' ');
+        const occupiedDayNames = objectPayload['occupied_day_names'];
+        if (Array.isArray(occupiedDayNames) && occupiedDayNames.length > 0) {
+          return `${detailMessage} Dias ocupados: ${occupiedDayNames.map((item) => String(item)).join(', ')}.`;
+        }
+        return detailMessage;
       }
       const firstKey = Object.keys(objectPayload)[0];
       if (!firstKey) {

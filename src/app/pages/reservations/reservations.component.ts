@@ -64,7 +64,7 @@ export class ReservationsComponent implements OnInit {
   dayStartLabel = '08:00';
   dayEndLabel = '22:00';
   private readonly slotStepMinutes = 30;
-  private readonly minAdvanceMinutes = 180;
+  private readonly minAdvanceMinutes = 45;
   private slotMetaMap = new Map<string, SlotMeta>();
   private currencyFormatter = new Intl.NumberFormat('es-AR', {
     style: 'currency',

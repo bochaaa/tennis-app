@@ -64,16 +64,16 @@
               Cerrado</span
             >
             <span class="inline-flex items-center gap-2"
-              ><span class="h-3 w-3 rounded border border-gray-300 bg-gray-200"></span>
-              No disponible hoy</span
+              ><span class="h-3 w-3 rounded border border-gray-300 bg-gray-200"></span> No
+              disponible hoy</span
             >
             <span class="inline-flex items-center gap-2"
-              ><span class="h-3 w-3 rounded border border-red-700 bg-red-700"></span>
-              Inicio seleccionado</span
+              ><span class="h-3 w-3 rounded border border-red-700 bg-red-700"></span> Inicio
+              seleccionado</span
             >
             <span class="inline-flex items-center gap-2"
-              ><span class="h-3 w-3 rounded border border-red-300 bg-red-100"></span>
-              Rango de tu reserva</span
+              ><span class="h-3 w-3 rounded border border-red-300 bg-red-100"></span> Rango de tu
+              reserva</span
             >
           </div>
 
@@ -199,7 +199,8 @@
           >
             Seleccion actual: <strong>{{ selectedCourt.name }}</strong> a las
             <strong>{{ selectedTime }}</strong
-            >. Ocupa <strong>{{ getSelectedTimeRangeLabel() }}</strong>.
+            >. Ocupa <strong>{{ getSelectedTimeRangeLabel() }}</strong
+            >.
           </div>
         </div>
 
@@ -333,14 +334,6 @@
       <div *ngIf="currentStep === 'review'" class="space-y-6">
         <h2 class="mb-6 text-2xl font-bold text-gray-800">Revisa tu reserva</h2>
 
-        <div class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <p class="font-bold">Importante</p>
-          <p class="mt-1">
-            Si la reserva no recibe al menos un pago parcial de alguno de los jugadores dentro de
-            la primera hora desde su creacion, se cancelara automaticamente.
-          </p>
-        </div>
-
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div class="rounded-lg bg-gray-50 p-4">
             <p class="text-xs text-gray-600">Cancha</p>
@@ -456,29 +449,27 @@
           <div class="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div class="rounded-lg bg-white p-4">
               <p class="text-xs text-gray-500">Total</p>
-              <p class="text-lg font-bold text-gray-900">{{ formatCurrency(getPaymentAmount()) }}</p>
+              <p class="text-lg font-bold text-gray-900">
+                {{ formatCurrency(getPaymentAmount()) }}
+              </p>
             </div>
             <div class="rounded-lg bg-white p-4">
               <p class="text-xs text-gray-500">Pagado</p>
-              <p class="text-lg font-bold text-emerald-700">{{ formatCurrency(getPaidAmount()) }}</p>
+              <p class="text-lg font-bold text-emerald-700">
+                {{ formatCurrency(getPaidAmount()) }}
+              </p>
             </div>
             <div class="rounded-lg bg-white p-4">
               <p class="text-xs text-gray-500">Pendiente</p>
-              <p class="text-lg font-bold text-amber-800">{{ formatCurrency(getRemainingAmount()) }}</p>
+              <p class="text-lg font-bold text-amber-800">
+                {{ formatCurrency(getRemainingAmount()) }}
+              </p>
             </div>
           </div>
 
           <p class="mt-3 text-xs text-gray-600">
             Vencimiento de pago: {{ getPaymentExpiresAtLabel() }}.
           </p>
-
-          <div class="mt-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <p class="font-bold">Recordatorio antes de pagar</p>
-            <p class="mt-1">
-              La reserva necesita recibir al menos un pago parcial dentro de la primera hora desde
-              su creacion. Si no se registra ningun pago, se cancelara automaticamente.
-            </p>
-          </div>
 
           <p
             *ngIf="requiresAdminReview()"
@@ -514,7 +505,9 @@
                   <button
                     type="button"
                     (click)="payPlayerShare(player)"
-                    [disabled]="isPlayerPaid(player) || isCreatingPaymentLink('player-' + player.id)"
+                    [disabled]="
+                      isPlayerPaid(player) || isCreatingPaymentLink('player-' + player.id)
+                    "
                     class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:bg-gray-300 disabled:text-gray-600"
                   >
                     {{

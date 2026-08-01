@@ -9,7 +9,7 @@
       </div>
 
       <div class="flex items-center space-x-4">
-        <ng-container *ngIf="isAdmin$ | async; else guestBadge">
+        <ng-container *ngIf="isAdmin$ | async">
           <p class="hidden max-w-24 truncate text-right text-sm font-semibold text-red-50 sm:block">
             {{ (currentAdmin$ | async) || 'Admin' }}
           </p>
@@ -20,22 +20,14 @@
             Cerrar sesion
           </button>
         </ng-container>
-
-        <ng-template #guestBadge>
-          <div
-            class="rounded-lg border border-white/25 bg-white/10 px-3 py-2 text-sm font-semibold text-red-100"
-          >
-            Modo invitado
-          </div>
-        </ng-template>
       </div>
     </div>
   </nav>
 
   <div class="mx-auto max-w-6xl px-4 py-16">
     <div class="mb-12 text-center">
-      <h2 class="mb-3 text-5xl font-bold">Reservas de Canchas</h2>
-      <p class="text-lg text-red-100">Reserva turnos de tenis para el club en pocos pasos.</p>
+      <h2 class="mb-3 text-5xl font-bold">Turnos de tenis</h2>
+      <p class="text-lg text-red-100">Elegi dia, horario y cancha en pocos pasos.</p>
     </div>
 
     <div
@@ -53,14 +45,14 @@
           (click)="bookAsGuest()"
           class="rounded-lg border border-white/30 px-6 py-4 text-base font-bold text-white transition hover:bg-white/10"
         >
-          Hacer una reserva
+          Reservar cancha
         </button>
 
         <button
           (click)="payReservationAsGuest()"
           class="rounded-lg border border-white/30 px-6 py-4 text-base font-bold text-white transition hover:bg-white/10"
         >
-          Pagar una reserva
+          Pagar turno
         </button>
       </div>
     </div>
