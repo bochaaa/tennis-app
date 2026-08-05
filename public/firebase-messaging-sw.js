@@ -20,34 +20,6 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-const BACKEND_PATH_PREFIXES = ['/api/', '/django-admin/', '/static/', '/media/'];
-
-function isBackendRequest(request) {
-  const url = new URL(request.url);
-
-  if (url.origin !== self.location.origin) {
-    return false;
-  }
-
-  return BACKEND_PATH_PREFIXES.some((prefix) => {
-    const pathWithoutTrailingSlash = prefix.slice(0, -1);
-    return url.pathname === pathWithoutTrailingSlash || url.pathname.startsWith(prefix);
-  });
-}
-
-self.addEventListener('fetch', (event) => {
-  if (isBackendRequest(event.request)) {
-    return;
-  }
-
-  if (event.request.mode === 'navigate') {
-    event.respondWith(fetch(event.request, { cache: 'no-store' }));
-    return;
-  }
-
-  event.respondWith(fetch(event.request));
-});
-
 function getReservationDateLabel(data) {
   const rawDate = data?.date || getReservationDateFromUrl(data?.url);
 
@@ -115,6 +87,17 @@ messaging.onBackgroundMessage((payload) => {
   };
 
   self.registration.showNotification(title, options);
+  self.clients.matchAll({ includeUncontrolled: true, type: 'window' }).then((clients) => {
+    clients.forEach((client) => {
+      client.postMessage({
+        type: 'PUSH_NOTIFICATION',
+        title,
+        body,
+        data,
+        receivedAt: new Date().toISOString(),
+      });
+    });
+  });
 });
 
 self.addEventListener('notificationclick', (event) => {

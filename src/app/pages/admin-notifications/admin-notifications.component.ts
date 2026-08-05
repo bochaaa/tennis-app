@@ -32,7 +32,9 @@ export class AdminNotificationsComponent implements OnInit {
       this.router.navigate(['/admin/notifications'], { replaceUrl: true });
     }
 
-    this.notificationService.markAllAsRead();
+    this.notificationService.loadNotificationHistory(15).subscribe(() => {
+      this.notificationService.markAllAsRead();
+    });
   }
 
   logout(): void {

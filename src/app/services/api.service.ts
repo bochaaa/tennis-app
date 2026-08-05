@@ -34,6 +34,14 @@ export interface NotificationDeviceUnregisterRequest {
   token: string;
 }
 
+export interface NotificationHistoryItem {
+  notification_id: string;
+  title: string;
+  body: string;
+  data: Record<string, unknown>;
+  created_at: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -236,6 +244,12 @@ export class ApiService {
   generateRecurringRules(daysAhead: number): Observable<unknown> {
     const params = new HttpParams().set('days_ahead', String(daysAhead));
     return this.http.post(`${this.apiUrl}/recurring-rules/generate/`, null, { params });
+  }
+
+  getNotificationHistory(limit = 15): Observable<NotificationHistoryItem[]> {
+    const normalizedLimit = Math.min(15, Math.max(1, Math.trunc(limit)));
+    const params = new HttpParams().set('limit', String(normalizedLimit));
+    return this.http.get<NotificationHistoryItem[]>(`${this.apiUrl}/notifications/`, { params });
   }
 
   registerNotificationDevice(data: NotificationDeviceRequest): Observable<unknown> {

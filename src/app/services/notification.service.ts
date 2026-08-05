@@ -10,7 +10,11 @@ import {
 import { BehaviorSubject, Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { environment } from '../../environments/environment';
-import { ApiService, NotificationDeviceRequest } from './api.service';
+import {
+  ApiService,
+  NotificationDeviceRequest,
+  NotificationHistoryItem,
+} from './api.service';
 
 export type NotificationStatus =
   | 'unsupported'
@@ -35,6 +39,7 @@ export interface AdminNotification {
 })
 export class NotificationService {
   private readonly tokenStorageKey = 'admin_fcm_token';
+  private readonly deviceIdStorageKey = 'admin_notification_device_id';
   private readonly notificationsStorageKey = 'admin_notifications';
   private statusSubject = new BehaviorSubject<NotificationStatus>(this.getInitialStatus());
   private notificationsSubject = new BehaviorSubject<AdminNotification[]>(
@@ -101,8 +106,8 @@ export class NotificationService {
           observer.next(status);
           observer.complete();
         })
-        .catch(() => {
-          this.statusSubject.next(this.getInitialStatus());
+        .catch((error) => {
+          this.handleRegistrationError(error);
           observer.next(this.statusSubject.value);
           observer.complete();
         });
@@ -147,6 +152,16 @@ export class NotificationService {
     });
   }
 
+  loadNotificationHistory(limit = 15): Observable<AdminNotification[]> {
+    return this.apiService.getNotificationHistory(limit).pipe(
+      map((history) => this.mergeNotificationHistory(history)),
+      catchError((error) => {
+        console.error('No se pudo cargar el historial de notificaciones.', error);
+        return of(this.notificationsSubject.value);
+      }),
+    );
+  }
+
   clearNotifications(): void {
     this.notificationsSubject.next([]);
     localStorage.removeItem(this.notificationsStorageKey);
@@ -174,6 +189,10 @@ export class NotificationService {
       return permission;
     }
 
+    return this.registerDevice(true);
+  }
+
+  private async registerDevice(showSuccessNotification: boolean): Promise<NotificationStatus> {
     if (!environment.firebase.vapidKey) {
       return 'firebase-config-missing';
     }
@@ -194,7 +213,7 @@ export class NotificationService {
       platform: 'web',
       provider: 'fcm',
       token,
-      device_id: 'web-chrome',
+      device_id: this.getOrCreateDeviceId(),
     };
 
     return await new Promise<NotificationStatus>((resolve) => {
@@ -207,11 +226,13 @@ export class NotificationService {
         .subscribe((status) => {
           if (status === 'registered') {
             localStorage.setItem(this.tokenStorageKey, token);
-            this.addNotification({
-              title: 'Notificaciones activadas',
-              body: 'Listo, te van a llegar avisos cuando entre una nueva reserva.',
-              receivedAt: new Date().toISOString(),
-            });
+            if (showSuccessNotification) {
+              this.addNotification({
+                title: 'Notificaciones activadas',
+                body: 'Listo, te van a llegar avisos cuando entre una nueva reserva.',
+                receivedAt: new Date().toISOString(),
+              });
+            }
           }
 
           resolve(status);
@@ -227,6 +248,26 @@ export class NotificationService {
     }
 
     return this.registrationPromise;
+  }
+
+  private getOrCreateDeviceId(): string {
+    const storedDeviceId = localStorage.getItem(this.deviceIdStorageKey);
+    if (storedDeviceId) {
+      return storedDeviceId;
+    }
+
+    const randomId =
+      typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+        ? crypto.randomUUID()
+        : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+    const deviceId = `web-${randomId}`;
+    localStorage.setItem(this.deviceIdStorageKey, deviceId);
+    return deviceId;
+  }
+
+  private handleRegistrationError(error: unknown): void {
+    console.error('No se pudo completar el registro de notificaciones push.', error);
+    this.statusSubject.next('backend-pending');
   }
 
   private async setupForegroundMessages(): Promise<void> {
@@ -273,13 +314,82 @@ export class NotificationService {
 
   private addNotification(notification: Omit<AdminNotification, 'id'>): void {
     const currentNotifications = this.notificationsSubject.value;
-    this.setNotifications([
+    this.setNotifications(this.deduplicateNotifications([
       {
         ...notification,
-        id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        id: this.getNotificationId(notification.data) || this.createLocalNotificationId(),
       },
       ...currentNotifications,
-    ]);
+    ]));
+  }
+
+  private mergeNotificationHistory(history: NotificationHistoryItem[]): AdminNotification[] {
+    const currentNotifications = this.notificationsSubject.value;
+    const readAtByKey = new Map(
+      currentNotifications
+        .filter((notification) => notification.readAt)
+        .map((notification) => [this.getNotificationKey(notification), notification.readAt]),
+    );
+    const historyNotifications = history.map((item) => {
+      const data = {
+        ...(item.data || {}),
+        notification_id: item.notification_id,
+      };
+      const notification: AdminNotification = {
+        id: item.notification_id,
+        title: item.title,
+        body: this.getBodyWithReservationDate(item.body, data),
+        receivedAt: item.created_at,
+        data,
+      };
+      const readAt = readAtByKey.get(this.getNotificationKey(notification));
+
+      return readAt ? { ...notification, readAt } : notification;
+    });
+    const mergedNotifications = this.deduplicateNotifications([
+      ...historyNotifications,
+      ...currentNotifications,
+    ]).sort(
+      (left, right) => this.getNotificationTimestamp(right) - this.getNotificationTimestamp(left),
+    );
+
+    this.setNotifications(mergedNotifications);
+    return this.notificationsSubject.value;
+  }
+
+  private deduplicateNotifications(notifications: AdminNotification[]): AdminNotification[] {
+    const seenKeys = new Set<string>();
+
+    return notifications.filter((notification) => {
+      const key = this.getNotificationKey(notification);
+      if (seenKeys.has(key)) {
+        return false;
+      }
+
+      seenKeys.add(key);
+      return true;
+    });
+  }
+
+  private getNotificationKey(notification: AdminNotification): string {
+    const notificationId = this.getNotificationId(notification.data);
+    return notificationId ? `server:${notificationId}` : `local:${notification.id}`;
+  }
+
+  private getNotificationId(data?: Record<string, unknown>): string {
+    const notificationId = data?.['notification_id'];
+    return typeof notificationId === 'string' && notificationId.trim()
+      ? notificationId.trim()
+      : '';
+  }
+
+  private createLocalNotificationId(): string {
+    return `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  private getNotificationTimestamp(notification: AdminNotification): number {
+    const timestamp = new Date(notification.receivedAt).getTime();
+    return Number.isNaN(timestamp) ? 0 : timestamp;
   }
 
   private getBodyWithReservationDate(
