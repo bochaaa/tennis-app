@@ -74,6 +74,8 @@ function getNotificationsTargetUrl(notification) {
 messaging.onBackgroundMessage((payload) => {
   const notification = payload.notification || {};
   const data = payload.data || {};
+  const notificationId =
+    typeof data.notification_id === 'string' ? data.notification_id.trim() : '';
   const title = notification.title || data.title || 'Nueva reserva';
   const body = getBodyWithReservationDate(
     notification.body || data.body || 'Hay una novedad en el panel de administracion.',
@@ -86,8 +88,19 @@ messaging.onBackgroundMessage((payload) => {
     data,
   };
 
-  self.registration.showNotification(title, options);
-  self.clients.matchAll({ includeUncontrolled: true, type: 'window' }).then((clients) => {
+  if (notificationId) {
+    options.tag = `push-${notificationId}`;
+    options.renotify = false;
+  }
+
+  // Firebase ya muestra automaticamente los mensajes que incluyen `notification`.
+  // Solo mostramos manualmente los mensajes data-only para no duplicar el aviso.
+  const displayNotification = payload.notification
+    ? Promise.resolve()
+    : self.registration.showNotification(title, options);
+  const notifyClients = self.clients
+    .matchAll({ includeUncontrolled: true, type: 'window' })
+    .then((clients) => {
     clients.forEach((client) => {
       client.postMessage({
         type: 'PUSH_NOTIFICATION',
@@ -98,6 +111,8 @@ messaging.onBackgroundMessage((payload) => {
       });
     });
   });
+
+  return Promise.all([displayNotification, notifyClients]);
 });
 
 self.addEventListener('notificationclick', (event) => {
