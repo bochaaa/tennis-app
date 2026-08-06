@@ -16,6 +16,7 @@ import {
   ReservationPaymentLinkRequest,
   ReservationPaymentLinkResponse,
   ReservationPaymentSearchResult,
+  ReservationTransferPaymentRequest,
   ReservationPaymentUpdateRequest,
   ReservationRequest,
   ReservationResponse,
@@ -108,6 +109,16 @@ export class ApiService {
   ): Observable<ReservationResponse> {
     return this.http.post<ReservationResponse>(
       `${this.apiUrl}/reservations/${reservationId}/payments/cash/`,
+      data,
+    );
+  }
+
+  confirmReservationTransferPayment(
+    reservationId: number,
+    data: ReservationTransferPaymentRequest,
+  ): Observable<ReservationPaymentSearchResult> {
+    return this.http.post<ReservationPaymentSearchResult>(
+      `${this.apiUrl}/reservations/${reservationId}/payments/transfer/`,
       data,
     );
   }

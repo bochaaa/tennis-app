@@ -48,10 +48,12 @@ export type PaymentTransactionStatus =
 
 export interface PaymentTransaction {
   id?: number;
+  provider?: string;
   player?: number | Player | null;
   player_name?: string | null;
   payment_type: PaymentType | string;
   status: PaymentTransactionStatus | string;
+  status_detail?: string | null;
   base_amount?: number | string | null;
   mp_amount?: number | string | null;
   amount_received?: number | string | null;
@@ -70,6 +72,13 @@ export interface ReservationCashPaymentRequest {
   confirmation_password: string;
   amount?: string;
   payment_type?: PaymentType;
+  player_id?: number;
+  notes?: string;
+}
+
+export interface ReservationTransferPaymentRequest {
+  payment_id: string;
+  payment_type: PaymentType;
   player_id?: number;
   notes?: string;
 }

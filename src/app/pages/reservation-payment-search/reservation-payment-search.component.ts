@@ -9,10 +9,13 @@ import {
   ReservationCashPaymentRequest,
   ReservationPaymentLinkRequest,
   ReservationPaymentSearchResult,
+  ReservationTransferPaymentRequest,
 } from '../../models';
 import { ApiService } from '../../services/api.service';
+import { AuthService } from '../../services/auth.service';
 
 type CashPaymentMode = Extract<PaymentType, 'total' | 'partial' | 'player'>;
+type TransferPaymentMode = Extract<PaymentType, 'total' | 'player'>;
 type ReservationListMode = 'today' | 'search';
 
 @Component({
@@ -25,6 +28,7 @@ type ReservationListMode = 'today' | 'search';
 export class ReservationPaymentSearchComponent implements OnInit {
   searchForm: FormGroup;
   cashPaymentForm: FormGroup;
+  transferPaymentForm: FormGroup;
 
   reservations: ReservationPaymentSearchResult[] = [];
   isLoading = false;
@@ -33,6 +37,11 @@ export class ReservationPaymentSearchComponent implements OnInit {
   cashPaymentReservation: ReservationPaymentSearchResult | null = null;
   cashPaymentPlayer: Player | null = null;
   cashPaymentMode: CashPaymentMode = 'total';
+  isConfirmingTransferPayment = false;
+  transferPaymentReservation: ReservationPaymentSearchResult | null = null;
+  transferPaymentPlayer: Player | null = null;
+  transferPaymentMode: TransferPaymentMode = 'total';
+  isAuthenticated = false;
   listMode: ReservationListMode = 'today';
   expandedIndividualPaymentIds = new Set<number>();
   submittedQuery = '';
@@ -49,6 +58,7 @@ export class ReservationPaymentSearchComponent implements OnInit {
   constructor(
     private readonly formBuilder: FormBuilder,
     private readonly apiService: ApiService,
+    private readonly authService: AuthService,
     private readonly router: Router,
     private readonly cdr: ChangeDetectorRef,
   ) {
@@ -60,9 +70,14 @@ export class ReservationPaymentSearchComponent implements OnInit {
       amount: [''],
       notes: [''],
     });
+    this.transferPaymentForm = this.formBuilder.group({
+      payment_id: ['', [Validators.required, Validators.pattern(/^\d+$/)]],
+      notes: [''],
+    });
   }
 
   ngOnInit(): void {
+    this.isAuthenticated = this.authService.isAuthenticated();
     this.loadPendingToday();
   }
 
@@ -282,6 +297,111 @@ export class ReservationPaymentSearchComponent implements OnInit {
       });
   }
 
+  openTransferPaymentModal(
+    reservation: ReservationPaymentSearchResult,
+    mode: TransferPaymentMode,
+    player?: Player,
+  ): void {
+    if (!this.authService.isAuthenticated()) {
+      this.isAuthenticated = false;
+      this.errorMessage = 'Debes iniciar sesion para registrar una transferencia QR.';
+      return;
+    }
+
+    if (reservation.status === 'CANCELLED') {
+      this.errorMessage = 'No se puede registrar una transferencia en una reserva cancelada.';
+      return;
+    }
+
+    if (reservation.is_paid || reservation.payment_status === 'paid') {
+      this.errorMessage = 'La reserva ya esta pagada.';
+      return;
+    }
+
+    if (mode === 'player' && !player?.id) {
+      this.errorMessage = 'No se pudo identificar al jugador de la transferencia.';
+      return;
+    }
+
+    this.transferPaymentReservation = reservation;
+    this.transferPaymentPlayer = mode === 'player' ? player || null : null;
+    this.transferPaymentMode = mode;
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.transferPaymentForm.reset({ payment_id: '', notes: '' });
+  }
+
+  closeTransferPaymentModal(): void {
+    if (this.isConfirmingTransferPayment) {
+      return;
+    }
+
+    this.transferPaymentReservation = null;
+    this.transferPaymentPlayer = null;
+    this.transferPaymentMode = 'total';
+    this.transferPaymentForm.reset({ payment_id: '', notes: '' });
+  }
+
+  confirmTransferPayment(): void {
+    if (!this.transferPaymentReservation) {
+      return;
+    }
+
+    if (!this.authService.isAuthenticated()) {
+      this.isAuthenticated = false;
+      this.closeTransferPaymentModal();
+      this.errorMessage = 'Tu sesion vencio. Inicia sesion nuevamente para registrar el pago.';
+      return;
+    }
+
+    if (this.transferPaymentForm.invalid) {
+      this.transferPaymentForm.markAllAsTouched();
+      return;
+    }
+
+    const payload: ReservationTransferPaymentRequest = {
+      payment_id: String(this.transferPaymentForm.get('payment_id')?.value || '').trim(),
+      payment_type: this.transferPaymentMode,
+    };
+
+    if (this.transferPaymentMode === 'player') {
+      if (!this.transferPaymentPlayer?.id) {
+        this.errorMessage = 'No se pudo identificar al jugador de la transferencia.';
+        return;
+      }
+      payload.player_id = this.transferPaymentPlayer.id;
+    }
+
+    const notes = String(this.transferPaymentForm.get('notes')?.value || '').trim();
+    if (notes) {
+      payload.notes = notes;
+    }
+
+    this.isConfirmingTransferPayment = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.apiService
+      .confirmReservationTransferPayment(this.transferPaymentReservation.id, payload)
+      .subscribe({
+        next: (response) => {
+          this.isConfirmingTransferPayment = false;
+          this.replaceReservation(response);
+          this.successMessage = 'Transferencia QR registrada correctamente.';
+          this.closeTransferPaymentModal();
+          this.cdr.detectChanges();
+        },
+        error: (error) => {
+          this.isConfirmingTransferPayment = false;
+          this.errorMessage = this.extractErrorMessage(
+            error,
+            'No se pudo verificar la transferencia QR.',
+          );
+          this.cdr.detectChanges();
+        },
+      });
+  }
+
   isCreatingPaymentLink(key: string): boolean {
     return this.creatingPaymentLinkKey === key;
   }
@@ -301,6 +421,15 @@ export class ReservationPaymentSearchComponent implements OnInit {
 
   canConfirmCashPayment(reservation: ReservationPaymentSearchResult): boolean {
     return (
+      !reservation.is_paid &&
+      reservation.payment_status !== 'paid' &&
+      reservation.status !== 'CANCELLED'
+    );
+  }
+
+  canRegisterTransferPayment(reservation: ReservationPaymentSearchResult): boolean {
+    return (
+      this.isAuthenticated &&
       !reservation.is_paid &&
       reservation.payment_status !== 'paid' &&
       reservation.status !== 'CANCELLED'
@@ -360,6 +489,24 @@ export class ReservationPaymentSearchComponent implements OnInit {
       default:
         return 'Pago pendiente';
     }
+  }
+
+  getPaymentStatusClasses(status: PaymentStatus | undefined): string {
+    switch (status) {
+      case 'rejected':
+        return 'border-red-300 bg-red-50 text-red-800';
+      case 'paid':
+        return 'border-emerald-300 bg-emerald-50 text-emerald-800';
+      case 'cancelled':
+      case 'expired':
+        return 'border-gray-300 bg-gray-100 text-gray-700';
+      default:
+        return 'border-amber-300 bg-amber-50 text-amber-900';
+    }
+  }
+
+  isPaymentRejected(reservation: ReservationPaymentSearchResult): boolean {
+    return reservation.payment_status === 'rejected';
   }
 
   getTotalAmount(reservation: ReservationPaymentSearchResult): number | null {
@@ -468,6 +615,18 @@ export class ReservationPaymentSearchComponent implements OnInit {
     return this.getPlayerFullName(this.cashPaymentPlayer);
   }
 
+  getTransferPaymentTitle(): string {
+    return this.transferPaymentMode === 'player'
+      ? 'Registrar transferencia del jugador'
+      : 'Registrar transferencia total';
+  }
+
+  getTransferPaymentPlayerName(): string {
+    return this.transferPaymentPlayer
+      ? this.getPlayerFullName(this.transferPaymentPlayer)
+      : '';
+  }
+
   isPlayerPaid(reservation: ReservationPaymentSearchResult, player: Player): boolean {
     if (!player.id || !reservation.payment_transactions) {
       return false;
@@ -487,6 +646,28 @@ export class ReservationPaymentSearchComponent implements OnInit {
       }
 
       return false;
+    });
+  }
+
+  hasRejectedPlayerPayment(reservation: ReservationPaymentSearchResult, player: Player): boolean {
+    if (this.isPlayerPaid(reservation, player) || !player.id || !reservation.payment_transactions) {
+      return false;
+    }
+
+    return reservation.payment_transactions.some((transaction) => {
+      if (transaction.status !== 'rejected') {
+        return false;
+      }
+
+      if (typeof transaction.player === 'number') {
+        return transaction.player === player.id;
+      }
+
+      return !!(
+        transaction.player &&
+        typeof transaction.player === 'object' &&
+        transaction.player.id === player.id
+      );
     });
   }
 
