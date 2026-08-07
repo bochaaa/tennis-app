@@ -91,6 +91,13 @@ export const routes: Routes = [
           ),
       },
       {
+        path: 'reservations/:id',
+        loadComponent: () =>
+          import('./pages/admin-reservation-detail/admin-reservation-detail.component').then(
+            (m) => m.AdminReservationDetailComponent,
+          ),
+      },
+      {
         path: 'notifications',
         loadComponent: () =>
           import('./pages/admin-notifications/admin-notifications.component').then(

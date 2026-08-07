@@ -167,6 +167,14 @@
           <div class="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
             <button
               type="button"
+              (click)="viewReservationDetails(reservation)"
+              class="w-full rounded-lg bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 sm:w-auto"
+            >
+              Ver detalles
+            </button>
+
+            <button
+              type="button"
               (click)="confirmPayment(reservation)"
               [disabled]="!canConfirmPayment(reservation) || isUpdating(reservation)"
               class="w-full rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:bg-emerald-900/60 disabled:text-emerald-200 sm:w-auto"

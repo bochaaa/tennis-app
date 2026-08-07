@@ -53,6 +53,12 @@ export class AdminNotificationsComponent implements OnInit {
   }
 
   openNotificationTarget(notification: AdminNotification): void {
+    const reservationId = this.getNotificationReservationId(notification);
+    if (reservationId !== null) {
+      this.router.navigate(['/admin/reservations', reservationId]);
+      return;
+    }
+
     const targetUrl = this.notificationService.getNotificationTargetUrl(notification);
 
     if (targetUrl) {
@@ -61,7 +67,10 @@ export class AdminNotificationsComponent implements OnInit {
   }
 
   hasTarget(notification: AdminNotification): boolean {
-    return !!this.notificationService.getNotificationTargetUrl(notification);
+    return (
+      this.getNotificationReservationId(notification) !== null ||
+      !!this.notificationService.getNotificationTargetUrl(notification)
+    );
   }
 
   private getPushNotificationFromUrl(): Omit<AdminNotification, 'id' | 'readAt'> | null {
@@ -103,7 +112,7 @@ export class AdminNotificationsComponent implements OnInit {
           params.set('date', date);
         }
         if (reservationId) {
-          params.set('reservation_id', reservationId);
+          return `/admin/reservations/${reservationId}`;
         }
 
         const queryString = params.toString();
@@ -114,5 +123,13 @@ export class AdminNotificationsComponent implements OnInit {
     } catch {
       return targetUrl;
     }
+  }
+
+  private getNotificationReservationId(notification: AdminNotification): number | null {
+    const value = notification.data?.['reservation_id'];
+    const normalizedValue = typeof value === 'number' ? String(value) : value;
+    return typeof normalizedValue === 'string' && /^\d+$/.test(normalizedValue.trim())
+      ? Number(normalizedValue)
+      : null;
   }
 }

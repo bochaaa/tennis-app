@@ -1,0 +1,281 @@
+<div
+  class="min-h-screen bg-[radial-gradient(circle_at_top,_#ef4444_0%,_#b91c1c_50%,_#7f1d1d_100%)] text-white"
+>
+  <nav class="border-b border-white/20 bg-black/20 backdrop-blur">
+    <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4">
+      <div class="flex items-center gap-3">
+        <button
+          type="button"
+          (click)="goBack()"
+          class="rounded-lg border border-white/30 px-3 py-2 text-sm font-bold hover:bg-white/10"
+        >
+          &larr; Volver
+        </button>
+        <h1 class="text-xl font-bold sm:text-2xl">Detalle del turno</h1>
+      </div>
+      <button
+        *ngIf="reservation"
+        type="button"
+        (click)="goToDayReservations()"
+        class="w-full rounded-lg bg-white px-4 py-2 text-sm font-bold text-red-700 hover:bg-red-50 sm:w-auto"
+      >
+        Ver mas turnos del dia
+      </button>
+    </div>
+  </nav>
+
+  <main class="mx-auto max-w-6xl px-4 py-5 sm:py-8">
+    <div *ngIf="isLoading" class="rounded-xl border border-white/20 bg-white/10 p-6">
+      Cargando detalle de la reserva...
+    </div>
+
+    <div *ngIf="errorMessage" class="rounded-xl border border-red-200/50 bg-red-950/40 p-5">
+      <p class="font-bold">No pudimos mostrar el turno</p>
+      <p class="mt-1 text-sm text-red-100">{{ errorMessage }}</p>
+    </div>
+
+    <ng-container *ngIf="!isLoading && reservation as item">
+      <section class="rounded-xl bg-white p-4 text-gray-900 shadow-2xl sm:p-6">
+        <div class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <p class="text-sm font-semibold uppercase tracking-wide text-red-700">
+                Reserva #{{ item.id }}
+              </p>
+              <span
+                class="rounded-full border border-green-200 bg-green-50 px-2.5 py-1 text-xs font-bold text-green-800"
+              >
+                {{ item.court_name || 'Cancha sin informar' }}
+              </span>
+              <span
+                class="rounded-full border border-violet-200 bg-violet-50 px-2.5 py-1 text-xs font-bold text-violet-800"
+              >
+                {{ getGameModeLabel() }}
+              </span>
+            </div>
+            <h2 class="mt-1 text-2xl font-black">
+              {{ item.contact_name || item.title || 'Turno sin titular' }}
+            </h2>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <span
+              class="rounded-full border px-3 py-1 text-xs font-bold"
+              [ngClass]="getPaymentStatusClasses(item.payment_status)"
+            >
+              {{ getPaymentStatusLabel(item.payment_status) }}
+            </span>
+            <span
+              class="rounded-full border px-3 py-1 text-xs font-bold"
+              [ngClass]="getReservationStatusClasses()"
+            >
+              {{ getReservationStatusLabel() }}
+            </span>
+          </div>
+        </div>
+
+        <div class="mt-6 grid gap-3 sm:grid-cols-2">
+          <div class="rounded-lg bg-gray-50 p-3">
+            <p class="text-xs text-gray-500">Horario</p>
+            <a
+              *ngIf="item.contact_phone; else noPhone"
+              class="mt-1 block font-bold text-blue-700 hover:underline"
+            >
+              {{ getWhenLabel() }}
+            </a>
+            <ng-template #noPhone><p class="mt-1 font-bold">No informado</p></ng-template>
+          </div>
+          <div class="rounded-lg bg-gray-50 p-3">
+            <p class="text-xs text-gray-500">Telefono</p>
+            <a
+              *ngIf="item.contact_phone; else noPhone"
+              class="mt-1 block font-bold text-blue-700 hover:underline"
+              [href]="'tel:' + item.contact_phone"
+            >
+              {{ item.contact_phone }}
+            </a>
+            <ng-template #noPhone><p class="mt-1 font-bold">No informado</p></ng-template>
+          </div>
+        </div>
+
+        <div *ngIf="item.notes" class="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
+          <p class="text-xs font-semibold uppercase tracking-wide text-gray-500">Notas</p>
+          <p class="mt-1 whitespace-pre-wrap text-sm">{{ item.notes }}</p>
+        </div>
+      </section>
+
+      <section class="mt-5 rounded-xl bg-white p-4 text-gray-900 shadow-xl sm:p-6">
+        <h2 class="text-xl font-black">Estado del cobro</h2>
+        <div class="mt-4 grid grid-cols-3 gap-2 sm:gap-4">
+          <div class="rounded-lg border border-gray-200 p-3 sm:p-4">
+            <p class="text-xs text-gray-500">Total</p>
+            <p class="mt-1 text-base font-black sm:text-xl">
+              {{ formatCurrency(item.total_amount || item.total_price) }}
+            </p>
+          </div>
+          <div class="rounded-lg border border-emerald-200 bg-emerald-50 p-3 sm:p-4">
+            <p class="text-xs text-emerald-700">Pagado</p>
+            <p class="mt-1 text-base font-black text-emerald-800 sm:text-xl">
+              {{ formatCurrency(item.paid_amount) }}
+            </p>
+          </div>
+          <div class="rounded-lg border border-amber-200 bg-amber-50 p-3 sm:p-4">
+            <p class="text-xs text-amber-700">Pendiente</p>
+            <p class="mt-1 text-base font-black text-amber-800 sm:text-xl">
+              {{ formatCurrency(item.remaining_amount) }}
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="mt-5 rounded-xl bg-white p-4 text-gray-900 shadow-xl sm:p-6">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-xl font-black">Participantes</h2>
+          <span class="text-sm font-semibold text-gray-500"
+            >{{ item.players.length }} jugador{{ item.players.length === 1 ? '' : 'es' }}</span
+          >
+        </div>
+
+        <div
+          *ngIf="item.players.length === 0"
+          class="mt-4 rounded-lg bg-gray-50 p-4 text-sm text-gray-600"
+        >
+          No hay jugadores informados.
+        </div>
+
+        <div class="mt-4 grid gap-3 md:grid-cols-2">
+          <article
+            *ngFor="let player of item.players"
+            class="rounded-lg border border-gray-200 bg-gray-50 p-4"
+          >
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <p class="font-bold">{{ getPlayerName(player) }}</p>
+                <p class="mt-1 text-sm text-gray-600">
+                  {{ player.is_member ? 'Socio' : 'No socio' }} ·
+                  {{ formatCurrency(player.price_applied) }}
+                </p>
+              </div>
+              <span
+                class="rounded-full border px-2.5 py-1 text-xs font-bold"
+                [ngClass]="getPlayerPaymentClasses(player)"
+              >
+                {{ getPlayerPaymentLabel(player) }}
+              </span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="mt-5 rounded-xl bg-white p-4 text-gray-900 shadow-xl sm:p-6">
+        <div class="flex items-center justify-between gap-3">
+          <h2 class="text-xl font-black">Historial de transacciones</h2>
+          <span class="text-sm font-semibold text-gray-500"
+            >{{ getTransactions().length }} intento{{
+              getTransactions().length === 1 ? '' : 's'
+            }}</span
+          >
+        </div>
+
+        <div
+          *ngIf="getTransactions().length === 0"
+          class="mt-4 rounded-lg bg-gray-50 p-4 text-sm text-gray-600"
+        >
+          Esta reserva todavia no tiene transacciones registradas.
+        </div>
+
+        <div class="mt-4 space-y-3">
+          <article
+            *ngFor="let transaction of getTransactions(); let transactionIndex = index"
+            class="rounded-lg border border-gray-200 p-4"
+          >
+            <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p class="font-bold">
+                  {{ getProviderLabel(transaction.provider) }} ·
+                  {{ getPaymentTypeLabel(transaction.payment_type) }}
+                </p>
+                <p class="mt-1 text-sm text-gray-600">
+                  {{ transaction.player_name || 'Pago de la reserva' }}
+                </p>
+                <p class="mt-2 text-sm text-gray-600">
+                  <span class="font-bold text-gray-900">{{ formatCurrency(transaction.base_amount) }}</span>
+                  <span class="mx-1">&middot;</span>
+                  {{ formatDateTime(transaction.created_at) }}
+                </p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span
+                  class="w-fit rounded-full border px-3 py-1 text-xs font-bold"
+                  [ngClass]="getTransactionStatusClasses(transaction)"
+                >
+                  {{ getTransactionStatusLabel(transaction) }}
+                </span>
+                <button
+                  type="button"
+                  (click)="toggleTransactionDetails(transaction, transactionIndex)"
+                  [attr.aria-expanded]="isTransactionExpanded(transaction, transactionIndex)"
+                  aria-label="Mostrar u ocultar detalles de la transaccion"
+                  class="inline-flex h-8 w-8 items-center justify-center rounded-full border border-gray-300 text-gray-600 transition hover:bg-gray-100"
+                >
+                  <span
+                    class="transition-transform"
+                    [ngClass]="
+                      isTransactionExpanded(transaction, transactionIndex) ? 'rotate-180' : ''
+                    "
+                    aria-hidden="true"
+                  >
+                    &#9662;
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            <div
+              *ngIf="isTransactionExpanded(transaction, transactionIndex)"
+              class="mt-4 grid gap-3 border-t border-gray-200 pt-4 text-sm sm:grid-cols-2 lg:grid-cols-4"
+            >
+              <div>
+                <p class="text-xs text-gray-500">Monto base</p>
+                <p class="font-bold">{{ formatCurrency(transaction.base_amount) }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500">Monto recibido</p>
+                <p class="font-bold">{{ formatCurrency(transaction.amount_received) }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500">Creada</p>
+                <p class="font-bold">{{ formatDateTime(transaction.created_at) }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500">Acreditada</p>
+                <p class="font-bold">{{ formatDateTime(transaction.paid_at) }}</p>
+              </div>
+            </div>
+
+            <div
+              *ngIf="isTransactionExpanded(transaction, transactionIndex)"
+              class="mt-4 grid gap-2 rounded-lg bg-gray-50 p-3 text-xs sm:grid-cols-2"
+            >
+              <p>
+                <span class="font-semibold text-gray-500">ID de pago:</span>
+                {{ transaction.payment_id || '-' }}
+              </p>
+              <p>
+                <span class="font-semibold text-gray-500">Detalle:</span>
+                {{ transaction.status_detail || '-' }}
+              </p>
+              <p class="break-all">
+                <span class="font-semibold text-gray-500">Referencia:</span>
+                {{ transaction.external_reference || '-' }}
+              </p>
+              <p>
+                <span class="font-semibold text-gray-500">Importe MP:</span>
+                {{ formatCurrency(transaction.mp_amount) }}
+              </p>
+            </div>
+          </article>
+        </div>
+      </section>
+    </ng-container>
+  </main>
+</div>

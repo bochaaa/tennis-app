@@ -46,6 +46,10 @@ export class AdminReservationPaymentsComponent implements OnInit {
     this.router.navigate(['/admin/dashboard']);
   }
 
+  viewReservationDetails(reservation: ReservationAdminItem): void {
+    this.router.navigate(['/admin/reservations', reservation.id]);
+  }
+
   onDateChanged(event: Event): void {
     const input = event.target as HTMLInputElement | null;
     this.selectedDate = String(input?.value || '').trim();

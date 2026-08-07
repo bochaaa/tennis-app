@@ -59,7 +59,14 @@ export interface PaymentTransaction {
   amount_received?: number | string | null;
   paid_at?: string | null;
   payment_id?: string | number | null;
+  preference_id?: string | null;
   external_reference?: string | null;
+  identification_decimal?: number | string | null;
+  payer_email?: string | null;
+  payment_url?: string | null;
+  expires_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
 }
 
 export interface ReservationPaymentLinkRequest {
@@ -111,7 +118,7 @@ export interface ReservationRequest {
 export interface ReservationResponse {
   id: number;
   reservation_type: 'NORMAL' | 'CLASS';
-  game_mode: 'SINGLES' | 'DOUBLES';
+  game_mode: 'SINGLES' | 'DOUBLES' | null;
   court?: number | Court;
   court_name?: string;
   contact_name?: string;
@@ -130,6 +137,10 @@ export interface ReservationResponse {
   payment_transactions?: PaymentTransaction[];
   is_paid?: boolean;
   paid_at?: string | null;
+  notes?: string | null;
+  title?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
   paid_confirmed_by?:
     | string
     | {
